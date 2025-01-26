@@ -1,0 +1,11 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: booking_bot
+    ports:
+      - "${WEB_EXTERNAL_PORT:-8000}:8000"
+    restart: always
+    env_file:
+      - .env

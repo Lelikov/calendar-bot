@@ -2,7 +2,7 @@ from os import getppid
 
 import redis.asyncio as aredis
 
-from settings import get_settings
+from app.settings import get_settings
 
 
 cfg = get_settings()

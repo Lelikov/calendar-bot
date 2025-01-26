@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import final
 
-from pydantic import PostgresDsn, Field
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     telegram_my_token: str
     is_check_first_run: bool = False
     postgres_dsn: str = Field(strict=True)
+    cal_signature: str = Field(strict=True)
+    openai_api_key: str = Field(strict=True)
 
 
 @lru_cache  # get it from memory
