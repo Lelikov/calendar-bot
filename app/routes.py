@@ -45,12 +45,11 @@ class BookingEventOrganizer(BaseModel):
 
 class BookingEventPayload(BaseModel):
     booking_id: int
-    description: str
+    description: str | None
     end_time: str
     organizer: BookingEventOrganizer
     start_time: str
     title: str
-    description: str
 
     class Config:
         alias_generator = to_camel
