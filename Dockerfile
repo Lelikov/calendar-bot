@@ -19,8 +19,9 @@ FROM deps AS development
 
 COPY --from=deps ${HOME_PATH}/.venv ${HOME_PATH}/.venv
 COPY app ${HOME_PATH}/app
+COPY uvicorn_config.json ${HOME_PATH}
 WORKDIR ${HOME_PATH}
 
 EXPOSE 8888
 
-ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8888"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8888", "--log-config", "uvicorn_config.json"]

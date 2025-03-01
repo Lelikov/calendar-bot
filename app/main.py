@@ -10,7 +10,6 @@ from app.config.logger import setup_logger
 from app.routes import root_router
 from app.settings import get_settings
 
-
 logger = structlog.get_logger(__name__)
 
 cfg = get_settings()
