@@ -1,7 +1,5 @@
 import hashlib
 import hmac
-from asyncio import create_task
-from datetime import datetime
 from enum import StrEnum
 from typing import Annotated
 
@@ -9,6 +7,7 @@ import pytz
 import structlog
 from aiogram import types
 from databases import Database
+from dateutil import parser
 from fastapi import APIRouter, Header, HTTPException, status
 from openai import AsyncOpenAI
 from pydantic import BaseModel
@@ -83,11 +82,6 @@ async def get_organizer_chat_id(email: str):
     return None
 
 
-time_format = {
-    TriggerEvent.BOOKING_CREATED: "%Y-%m-%dT%H:%M:%SZ",
-    TriggerEvent.BOOKING_RESCHEDULED: "%Y-%m-%dT%H:%M:%SZ",
-    TriggerEvent.BOOKING_CANCELLED: "%Y-%m-%dT%H:%M:%S%z",
-}
 TIME_FORMAT = "%d-%m-%Y %H:%M"
 
 
@@ -96,9 +90,9 @@ async def validate_signature(signature: str, request: Request) -> bool:
     return signature == hmac.new(cfg.cal_signature.encode(), body, hashlib.sha256).hexdigest()
 
 
-def get_organizer_time(organizer_tz, start_time, trigger_event):
+def get_organizer_time(organizer_tz, start_time):
     return (
-        datetime.strptime(start_time, time_format.get(trigger_event))
+        parser.isoparse(start_time)
         .replace(tzinfo=pytz.utc)
         .astimezone(organizer_tz)
         .strftime(TIME_FORMAT)
@@ -153,7 +147,6 @@ async def booking(
     organizer_time = get_organizer_time(
         organizer_tz=pytz.timezone(booking_event.payload.organizer.time_zone),
         start_time=booking_event.payload.start_time,
-        trigger_event=booking_event.trigger_event,
     )
 
     if notification_text := get_notification_text(
@@ -165,6 +158,8 @@ async def booking(
             chat_id=organizer_chat_id,
             text=notification_text,
         )
+    return None
+
 
 @root_router.post(cfg.webhook_path)
 async def bot_webhook(
