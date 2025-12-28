@@ -2,6 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from logging import getLevelNamesMapping
 
+import sentry_sdk
 import structlog
 from fastapi import FastAPI
 
@@ -9,6 +10,7 @@ from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
 from app.routes import root_router
 from app.settings import get_settings
+
 
 logger = structlog.get_logger(__name__)
 
@@ -44,6 +46,11 @@ async def lifespan(application: FastAPI):
     if cfg.debug:
         ngrok.disconnect()
 
+
+sentry_sdk.init(
+    dsn="https://8809d1c5acaa09a3e95a0239033a4b01@o4510613317222400.ingest.de.sentry.io/4510613319188560",
+    send_default_pii=True,
+)
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(root_router)

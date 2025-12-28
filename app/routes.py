@@ -91,12 +91,8 @@ async def validate_signature(signature: str, request: Request) -> bool:
 
 
 def get_organizer_time(organizer_tz, start_time):
-    return (
-        parser.isoparse(start_time)
-        .replace(tzinfo=pytz.utc)
-        .astimezone(organizer_tz)
-        .strftime(TIME_FORMAT)
-    )
+    return parser.isoparse(start_time).replace(tzinfo=pytz.utc).astimezone(organizer_tz).strftime(TIME_FORMAT)
+
 
 def get_notification_text(trigger_event, title, organizer_time):
     messages = {
@@ -172,3 +168,8 @@ async def bot_webhook(
     telegram_update = types.Update(**update)
     await dp.feed_webhook_update(bot=bot, update=telegram_update)
     return None
+
+
+@root_router.get("/sentry-debug-dnsdksl")
+async def trigger_error():
+    division_by_zero = 1 / 0
