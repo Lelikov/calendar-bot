@@ -48,8 +48,10 @@ async def lifespan(application: FastAPI):
 
 
 sentry_sdk.init(
-    dsn="https://8809d1c5acaa09a3e95a0239033a4b01@o4510613317222400.ingest.de.sentry.io/4510613319188560",
+    dsn=cfg.sentry_dsn,
     send_default_pii=True,
+    environment="dev" if cfg.debug else "production",
+    debug=cfg.debug,
 )
 
 app = FastAPI(lifespan=lifespan)

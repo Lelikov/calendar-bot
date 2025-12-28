@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     postgres_dsn: str = Field(strict=True)
     cal_signature: str = Field(strict=True)
     openai_api_key: str = Field(strict=True)
+    sentry_dsn: str = Field(strict=True)
 
 
 @lru_cache  # get it from memory
