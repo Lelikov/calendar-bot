@@ -9,6 +9,7 @@ from app.schemas import BookingEvent, BookingEventOrganizer, TriggerEvent
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
 
+
 logger = structlog.get_logger(__name__)
 
 

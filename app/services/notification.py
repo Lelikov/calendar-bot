@@ -11,6 +11,7 @@ from app.adapters.email import EmailService
 from app.schemas import BookingEventAttendee, BookingEventOrganizer, BookingEventPayload, TriggerEvent
 from app.settings import get_settings
 
+
 logger = structlog.get_logger(__name__)
 cfg = get_settings()
 

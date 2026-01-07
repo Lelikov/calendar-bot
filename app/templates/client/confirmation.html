@@ -1,63 +1,85 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="font-family: inherit;">
+<!-- Greeting -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
+    <tr>
+        <td align="center">
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">Запись подтверждена</h2>
+            <p style="margin: 0; color: #4b5563; font-size: 16px; font-family: inherit;">
+                Здравствуйте, {{ client_name }}! Ваша встреча с психологом запланирована.
+            </p>
+        </td>
+    </tr>
+</table>
 
-    <!-- Greeting -->
-    <div style="text-align: center; margin-bottom: 24px;">
-        <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827;">Запись подтверждена</h2>
-        <p style="margin: 0; color: #4b5563; font-size: 16px;">
-            Здравствуйте, {{ client_name }}! Ваша встреча с психологом запланирована.
-        </p>
-    </div>
+<!-- Details Card -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #eef2ff; border-radius: 12px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 24px;">
+            <!-- Date/Time -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
+                <tr>
+                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">📅</td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">{{ date }} в {{ time }}</td>
+                </tr>
+            </table>
+            <!-- Duration -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
+                <tr>
+                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">⏳</td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Длительность: {{ duration }}</td>
+                </tr>
+            </table>
+            <!-- Timezone -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">🌍</td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Часовой пояс: {{ timezone }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
-    <!-- Details Card -->
-    <div style="background-color: #eef2ff; border-radius: 12px; padding: 24px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
-        <div style="margin-bottom: 16px; display: flex; align-items: center;">
-            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">📅</span>
-            <span style="font-weight: 500; color: #374151;">{{ date }} в {{ time }}</span>
-        </div>
-        <div style="margin-bottom: 16px; display: flex; align-items: center;">
-            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">⏳</span>
-            <span style="font-weight: 500; color: #374151;">Длительность: {{ duration }}</span>
-        </div>
-        <div style="display: flex; align-items: center;">
-            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">🌍</span>
-            <span style="font-weight: 500; color: #374151;">Часовой пояс: {{ timezone }}</span>
-        </div>
-    </div>
+<!-- Buttons -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
+    <tr>
+        <td align="center">
+            <a href="{{ meeting_link }}" style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; margin-bottom: 12px; box-sizing: border-box; font-family: inherit;">
+                Подключиться к встрече
+            </a>
+            <a href="{{ cancel_link }}" style="display: block; width: 100%; background-color: #ffffff; color: #dc2626; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; border: 1px solid #fecaca; box-sizing: border-box; font-family: inherit;">
+                Отменить встречу
+            </a>
+        </td>
+    </tr>
+</table>
 
-    <!-- Buttons -->
-    <div style="margin-bottom: 24px;">
-        <!-- Primary Button -->
-        <a href="{{ meeting_link }}" style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; margin-bottom: 12px; box-sizing: border-box;">
-            Подключиться к встрече
-        </a>
+<!-- Warning Info -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #fefce8; border: 1px solid #fef9c3; border-radius: 8px; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 16px; font-size: 14px; color: #854d0e; font-family: inherit;">
+            <p style="margin: 0;">
+                <strong>Важно:</strong> Ссылка на подключение станет активной за 5 минут до начала встречи.
+                Пожалуйста, подготовьтесь заранее.
+            </p>
+        </td>
+    </tr>
+</table>
 
-        <!-- Secondary Button -->
-        <a href="{{ cancel_link }}" style="display: block; width: 100%; background-color: #ffffff; color: #dc2626; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; border: 1px solid #fecaca; box-sizing: border-box;">
-            Отменить встречу
-        </a>
-    </div>
-
-    <!-- Warning Info -->
-    <div style="background-color: #fefce8; border: 1px solid #fef9c3; border-radius: 8px; padding: 16px; font-size: 14px; color: #854d0e; margin-bottom: 24px;">
-        <p style="margin: 0;">
-            <strong>Важно:</strong> Ссылка на подключение станет активной за 5 минут до начала встречи.
-            Пожалуйста, подготовьтесь заранее.
-        </p>
-    </div>
-
-    <!-- Rules List -->
-    <div style="font-size: 14px; color: #6b7280; border-top: 1px solid #f3f4f6; padding-top: 16px;">
-        <p style="font-weight: 600; color: #374151; margin-bottom: 8px;">Правила встречи:</p>
-        <ul style="margin: 0; padding-left: 20px; line-height: 1.5;">
-            <li>Обеспечьте стабильное интернет-соединение.</li>
-            <li>Выберите тихое место, где вас никто не потревожит.</li>
-            <li>Отмена встречи без оплаты возможна не позднее чем за 24 часа.</li>
-            <li>Конфиденциальность гарантируется.</li>
-        </ul>
-    </div>
-
-</div>
+<!-- Rules List -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-top: 1px solid #f3f4f6; padding-top: 16px;">
+    <tr>
+        <td style="font-size: 14px; color: #6b7280; font-family: inherit;">
+            <p style="font-weight: 600; color: #374151; margin-bottom: 8px;">Правила встречи:</p>
+            <ul style="margin: 0; padding-left: 20px; line-height: 1.5;">
+                <li>Обеспечьте стабильное интернет-соединение.</li>
+                <li>Выберите тихое место, где вас никто не потревожит.</li>
+                <li>Отмена встречи без оплаты возможна не позднее чем за 24 часа.</li>
+                <li>Конфиденциальность гарантируется.</li>
+            </ul>
+        </td>
+    </tr>
+</table>
 {% endblock %}

@@ -1,39 +1,56 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div style="font-family: inherit;">
+<!-- Greeting -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
+    <tr>
+        <td align="center">
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">Новая запись</h2>
+            <p style="margin: 0; color: #4b5563; font-size: 16px; font-family: inherit;">
+                Здравствуйте, {{ organizer_name }}! У вас новая встреча с {{ attendee_name }}.
+            </p>
+        </td>
+    </tr>
+</table>
 
-    <!-- Greeting -->
-    <div style="text-align: center; margin-bottom: 24px;">
-        <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827;">Новая запись</h2>
-        <p style="margin: 0; color: #4b5563; font-size: 16px;">
-            Здравствуйте, {{ organizer_name }}! У вас новая встреча с {{ attendee_name }}.
-        </p>
-    </div>
+<!-- Details Card -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #eef2ff; border-radius: 12px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 24px;">
+            <!-- Date/Time -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
+                <tr>
+                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">📅</td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">{{ start_time }}</td>
+                </tr>
+            </table>
+            <!-- Duration -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
+                <tr>
+                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">⏳</td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Длительность: {{ duration }}</td>
+                </tr>
+            </table>
+            <!-- Timezone -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">🌍</td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Часовой пояс: {{ time_zone }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
-    <!-- Details Card -->
-    <div style="background-color: #eef2ff; border-radius: 12px; padding: 24px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
-        <div style="margin-bottom: 16px; display: flex; align-items: center;">
-            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">📅</span>
-            <span style="font-weight: 500; color: #374151;">{{ start_time }}</span>
-        </div>
-        <div style="margin-bottom: 16px; display: flex; align-items: center;">
-            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">⏳</span>
-            <span style="font-weight: 500; color: #374151;">Длительность: {{ duration }}</span>
-        </div>
-        <div style="display: flex; align-items: center;">
-            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">🌍</span>
-            <span style="font-weight: 500; color: #374151;">Часовой пояс: {{ time_zone }}</span>
-        </div>
-    </div>
-
-    <!-- Buttons -->
-    <div style="margin-bottom: 24px;">
-        <a href="{{ meeting_url }}"
-           style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; margin-bottom: 12px; box-sizing: border-box;">
-            Перейти к записи
-        </a>
-    </div>
-
-</div>
+<!-- Buttons -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
+    <tr>
+        <td align="center">
+            <a href="{{ meeting_url }}"
+               style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; box-sizing: border-box; font-family: inherit;">
+                Перейти к записи
+            </a>
+        </td>
+    </tr>
+</table>
 {% endblock %}
