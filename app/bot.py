@@ -63,4 +63,3 @@ async def start_telegram(base_webhook_url: str) -> None:
     if fr:
         await set_webhook(bot, base_webhook_url)
         await set_bot_commands_menu(bot)
-

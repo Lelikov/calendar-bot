@@ -1,10 +1,12 @@
-import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from logging import getLevelNamesMapping
 
 import sentry_sdk
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
@@ -16,43 +18,39 @@ logger = structlog.get_logger(__name__)
 
 cfg = get_settings()
 
-if cfg.debug:
-    import ngrok
-
-
-async def create_listener():
-    session = await ngrok.SessionBuilder().authtoken_from_env().connect()
-    listener = await session.http_endpoint().domain(os.getenv("NGROK_DOMAIN")).listen()
-    listener.forward(addr="127.0.0.1:8000")
-    return listener
-
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):
+async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     log_level = getLevelNamesMapping().get(cfg.log_level)
     setup_logger(log_level=log_level, console_render=cfg.debug)
 
-    base_webhook_url = cfg.base_webhook_url
-    if cfg.debug:
-        listener = await create_listener()
-        base_webhook_url = listener.url()
-
     logger.info("🚀 Starting application")
-    from app.bot import start_telegram
+    from app.bot import start_telegram  # noqa: PLC0415
 
-    await start_telegram(base_webhook_url=base_webhook_url)
+    await start_telegram(base_webhook_url=cfg.base_webhook_url)
     yield
     logger.info("⛔ Stopping application")
-    if cfg.debug:
-        ngrok.disconnect()
 
 
-sentry_sdk.init(
-    dsn=cfg.sentry_dsn,
-    send_default_pii=True,
-    environment="dev" if cfg.debug else "production",
-    debug=cfg.debug,
-)
+if cfg.sentry_dsn:
+    logger.info(f"Initializing Sentry with DSN: {cfg.sentry_dsn}")
+    sentry_sdk.init(
+        dsn=cfg.sentry_dsn,
+        send_default_pii=True,
+        environment="dev" if cfg.debug else "production",
+        debug=cfg.debug,
+    )
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    logger.error("Validation error", path=request.url.path, errors=exc.errors(), body=exc.body)
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
+
+
 app.include_router(root_router)

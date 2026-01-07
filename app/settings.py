@@ -17,8 +17,14 @@ class Settings(BaseSettings):
     is_check_first_run: bool = False
     postgres_dsn: str = Field(strict=True)
     cal_signature: str = Field(strict=True)
-    openai_api_key: str = Field(strict=True)
-    sentry_dsn: str = Field(strict=True)
+    openai_api_key: str = Field(strict=True, default="")
+    sentry_dsn: str | None = Field(strict=True, default=None)
+    shortify_api_key: str | None = Field(strict=True, default=None)
+    jitsi_jwt_token: str = Field(strict=True)
+
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
 
 
 @lru_cache  # get it from memory

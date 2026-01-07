@@ -1,0 +1,275 @@
+import time
+from asyncio import Task, create_task, sleep
+
+import jwt
+import pytz
+import structlog
+from aiogram import Bot
+from aiogram.types import LinkPreviewOptions
+from babel.dates import get_timezone_location
+from dateutil import parser
+
+from app.adapters.db import BookingDatabaseAdapter
+from app.adapters.shortener import UrlShortenerAdapter
+from app.schemas import BookingEvent, BookingEventOrganizer, BookingEventPayload, TriggerEvent
+from app.settings import get_settings
+
+
+logger = structlog.get_logger(__name__)
+cfg = get_settings()
+
+TIME_FORMAT = "%d-%m-%Y %H:%M"
+METADATA_WAIT_ATTEMPTS = 1
+METADATA_WAIT_DELAY = 5
+
+
+class MeetingService:
+    def __init__(self, db: BookingDatabaseAdapter, shortener: UrlShortenerAdapter) -> None:
+        self.db = db
+        self.shortener = shortener
+        self.timeshift = 5 * 60
+
+    def _create_jitsi_token(self, booking_event_payload: BookingEventPayload, name: str) -> str:
+        payload = {
+            "aud": "jitsi.zhivaya",
+            "iss": "jitsi.zhivaya",
+            "sub": "*",
+            "room": booking_event_payload.uid,
+            "iat": int(time.time()),
+            "nbf": parser.parse(booking_event_payload.start_time).timestamp() - self.timeshift,
+            "exp": parser.parse(booking_event_payload.end_time).timestamp() + self.timeshift,
+            "context": {"user": {"name": name}},
+        }
+        return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
+
+    async def _generate_url(
+        self,
+        booking_event_payload: BookingEventPayload,
+        organizer_token: str,
+        is_update: bool = False,
+    ) -> str:
+        long_url = f"https://meet.zhivaya.org/{booking_event_payload.uid}?jwt={organizer_token}"
+        try:
+            expires_at = parser.parse(booking_event_payload.end_time).timestamp() + self.timeshift
+            if is_update:
+                short_url = await self.shortener.update_short_url(
+                    long_url=long_url,
+                    expires_at=expires_at,
+                    new_external_id=booking_event_payload.uid,
+                    old_external_id=booking_event_payload.reschedule_uid or booking_event_payload.uid,
+                )
+            else:
+                short_url = await self.shortener.create_short_url(
+                    long_url=long_url,
+                    expires_at=expires_at,
+                    external_id=booking_event_payload.uid,
+                )
+
+            final_url = short_url if short_url else long_url
+        except Exception:
+            logger.exception("Error generating URL")
+            final_url = long_url
+        return final_url
+
+    async def _ensure_metadata_sync(self, uid: str) -> None:
+        for _ in range(METADATA_WAIT_ATTEMPTS):
+            await sleep(METADATA_WAIT_DELAY)
+            metadata = await self.db.get_booking_metadata(uid)
+            if metadata and str(metadata) != "{}":
+                return
+
+    async def setup_meeting(
+        self,
+        booking_event_payload: BookingEventPayload,
+        organizer_name: str,
+        is_update: bool = False,
+    ) -> str:
+        organizer_token = self._create_jitsi_token(booking_event_payload, organizer_name)
+        meeting_url = await self._generate_url(booking_event_payload, organizer_token, is_update)
+
+        await self._ensure_metadata_sync(booking_event_payload.uid)
+        await self.db.update_booking_video_url(booking_event_payload.uid, meeting_url)
+        return meeting_url
+
+
+class NotificationService:
+    def __init__(self, db: BookingDatabaseAdapter, bot: Bot) -> None:
+        self.db = db
+        self.bot = bot
+
+    @staticmethod
+    def _get_organizer_time(organizer_tz_str: str, start_time: str | None) -> str:
+        if not start_time:
+            return ""
+        organizer_tz = pytz.timezone(organizer_tz_str)
+        parsed_time = parser.parse(start_time)
+        return parsed_time.astimezone(organizer_tz).strftime(TIME_FORMAT)
+
+    def _get_notification_text(
+        self,
+        *,
+        time_zone: str,
+        start_time: str,
+        meeting_url: str | None,
+        booking_uid: str,
+        trigger_event: TriggerEvent,
+        reschedule_start_time: str | None = None,
+    ) -> str | None:
+        organizer_time = self._get_organizer_time(
+            organizer_tz_str=time_zone,
+            start_time=start_time,
+        )
+
+        def get_loc(tz: str) -> str:
+            return get_timezone_location(tz, locale="ru", return_city=True)
+
+        messages = {}
+
+        if trigger_event == TriggerEvent.BOOKING_CREATED:
+            messages[TriggerEvent.BOOKING_CREATED] = f"""✅ <b>Новое бронирование</b>
+
+📅 <b>Время начала:</b> {organizer_time}
+🌍 <b>Часовой пояс:</b> {get_loc(time_zone)}
+
+🔗 <a href="{meeting_url}">Ссылка на встречу</a>
+👤 <a href="https://booking.zhivaya.org/booking/{booking_uid}">Информация o клиенте</a>"""
+
+        elif trigger_event == TriggerEvent.BOOKING_RESCHEDULED:
+            previous_time = self._get_organizer_time(organizer_tz_str=time_zone, start_time=reschedule_start_time)
+            messages[TriggerEvent.BOOKING_RESCHEDULED] = f"""✅ <b>Перенос бронирования</b>
+
+📅 <b>Предыдущее время начала:</b> {previous_time}
+📅 <b>Новое время начала:</b> {organizer_time}
+🌍 <b>Часовой пояс:</b> {get_loc(time_zone)}
+
+🔗 <a href="{meeting_url}">Ссылка на встречу</a>
+👤 <a href="https://booking.zhivaya.org/booking/{booking_uid}">Информация o клиенте</a>"""
+
+        elif trigger_event == TriggerEvent.BOOKING_CANCELLED:
+            messages[TriggerEvent.BOOKING_CANCELLED] = f"""✅ <b>Бронирование отменено</b>
+
+📅 <b>Время начала:</b> {organizer_time}
+🌍 <b>Часовой пояс:</b> {get_loc(time_zone)}
+👤 <a href="https://booking.zhivaya.org/booking/{booking_uid}">Информация o клиенте</a>"""
+
+        return messages.get(trigger_event)
+
+    async def notify_organizer(
+        self,
+        organizer: BookingEventOrganizer,
+        booking_event_payload: BookingEventPayload,
+        trigger_event: TriggerEvent,
+        meeting_url: str | None = None,
+    ) -> None:
+        organizer_chat_id = await self.db.get_organizer_chat_id(organizer.email)
+        if not organizer_chat_id:
+            logger.warning("Organizer chat ID not found", email=organizer.email)
+            return
+
+        notification_text = self._get_notification_text(
+            time_zone=organizer.time_zone,
+            meeting_url=meeting_url,
+            start_time=booking_event_payload.start_time,
+            booking_uid=booking_event_payload.uid,
+            trigger_event=trigger_event,
+            reschedule_start_time=booking_event_payload.reschedule_start_time,
+        )
+
+        if notification_text:
+            logger.info("Sending notification to organizer", email=organizer.email, trigger_event=trigger_event)
+            await self.bot.send_message(
+                chat_id=organizer_chat_id,
+                text=notification_text,
+                link_preview_options=LinkPreviewOptions(is_disabled=True),
+            )
+
+
+class BookingController:
+    def __init__(self, db: BookingDatabaseAdapter, shortener: UrlShortenerAdapter, bot: Bot) -> None:
+        self.db = db
+        self.meeting_service = MeetingService(db, shortener)
+        self.notification_service = NotificationService(db, bot)
+        self.background_tasks: set[Task] = set()
+
+    async def _handle_created(self, booking_event: BookingEvent) -> None:
+        payload = booking_event.payload
+        meeting_url = await self.meeting_service.setup_meeting(
+            booking_event_payload=payload,
+            organizer_name=payload.organizer.name,
+        )
+        await self.notification_service.notify_organizer(
+            organizer=payload.organizer,
+            booking_event_payload=payload,
+            trigger_event=booking_event.trigger_event,
+            meeting_url=meeting_url,
+        )
+
+    async def _handle_rescheduled(self, booking_event: BookingEvent) -> None:
+        payload = booking_event.payload
+        meeting_url = await self.meeting_service.setup_meeting(
+            booking_event_payload=payload,
+            organizer_name=payload.organizer.name,
+            is_update=True,
+        )
+        await self.notification_service.notify_organizer(
+            organizer=payload.organizer,
+            booking_event_payload=payload,
+            trigger_event=booking_event.trigger_event,
+            meeting_url=meeting_url,
+        )
+
+    async def _handle_reassigned(self, booking_event: BookingEvent) -> None:
+        payload = booking_event.payload
+        previous_organizer = payload.organizer
+
+        current_organizer = BookingEventOrganizer(**await self.db.get_user(email=payload.new_organizer_email))
+
+        meeting_url = await self.meeting_service.setup_meeting(
+            booking_event_payload=payload,
+            organizer_name=current_organizer.name,
+            is_update=True,
+        )
+
+        await self.notification_service.notify_organizer(
+            organizer=previous_organizer,
+            booking_event_payload=payload,
+            trigger_event=TriggerEvent.BOOKING_CANCELLED,
+            meeting_url=None,
+        )
+
+        await self.notification_service.notify_organizer(
+            organizer=current_organizer,
+            booking_event_payload=payload,
+            trigger_event=TriggerEvent.BOOKING_CREATED,
+            meeting_url=meeting_url,
+        )
+
+    async def _handle_cancelled(self, booking_event: BookingEvent) -> None:
+        await self.notification_service.notify_organizer(
+            organizer=booking_event.payload.organizer,
+            booking_event_payload=booking_event.payload,
+            trigger_event=booking_event.trigger_event,
+            meeting_url=None,
+        )
+
+    async def _background_processing(self, booking_event: BookingEvent) -> None:
+        logger.info("Processing booking event", uid=booking_event.payload.uid, type=booking_event.trigger_event)
+        try:
+            match booking_event.trigger_event:
+                case TriggerEvent.BOOKING_CREATED:
+                    await self._handle_created(booking_event)
+                case TriggerEvent.BOOKING_RESCHEDULED:
+                    await self._handle_rescheduled(booking_event)
+                case TriggerEvent.BOOKING_PAYMENT_INITIATED:
+                    await self._handle_reassigned(booking_event)
+                case TriggerEvent.BOOKING_CANCELLED:
+                    await self._handle_cancelled(booking_event)
+                case _:
+                    logger.warning("Unknown trigger event", event=booking_event.trigger_event)
+        except Exception:
+            logger.exception("Error in background processing", uid=booking_event.payload.uid)
+
+    async def handle_booking(self, booking_event: BookingEvent) -> None:
+        task = create_task(self._background_processing(booking_event))
+        self.background_tasks.add(task)
+        task.add_done_callback(self.background_tasks.discard)

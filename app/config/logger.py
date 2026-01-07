@@ -1,9 +1,10 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from functools import partial
 
 import structlog
 import ujson
+from structlog.processors import JSONRenderer
 
 
 def setup_logger(log_level: int, console_render: bool) -> None:
@@ -22,7 +23,7 @@ def setup_logger(log_level: int, console_render: bool) -> None:
                 structlog.processors.CallsiteParameter.THREAD_NAME,
                 structlog.processors.CallsiteParameter.PROCESS,
                 structlog.processors.CallsiteParameter.PROCESS_NAME,
-            }
+            },
         ),
         structlog.stdlib.ExtraAdder(),
     ]
@@ -67,12 +68,13 @@ def configure_default_logging(
     logging.getLogger("asyncio_redis").setLevel(logging.ERROR)
     logging.getLogger("urllib3").setLevel(logging.ERROR)
     logging.getLogger("botocore").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
 
 
-def get_logs_renderer(console_render: bool) -> structlog.dev.ConsoleRenderer | structlog.processors.JSONRenderer:
+def get_logs_renderer(console_render: bool) -> Callable[..., str] | JSONRenderer:
     if console_render:
 
-        def exception_fixer(logger: structlog.dev.WrappedLogger, name: str, event_dict: structlog.dev.EventDict):
+        def exception_fixer(logger: structlog.dev.WrappedLogger, name: str, event_dict: structlog.dev.EventDict) -> str:
             if isinstance(event_dict.get("exception"), list):
                 event_dict["exception"] = "".join(event_dict["exception"])
             return structlog.dev.ConsoleRenderer(colors=True)(logger, name, event_dict)

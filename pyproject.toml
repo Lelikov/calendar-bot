@@ -21,11 +21,12 @@ dependencies = [
     "nc-py-api>=0.19.0",
     "python-dateutil>=2.9.0.post0",
     "sentry-sdk[fastapi]>=2.48.0",
+    "babel>=2.17.0",
+    "pre-commit>=4.5.1",
 ]
 
 [dependency-groups]
 dev = [
-    "ngrok>=1.4.0",
     "ruff>=0.9.3",
 ]
 
