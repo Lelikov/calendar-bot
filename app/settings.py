@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = Field(strict=True, default=None)
     shortify_api_key: str | None = Field(strict=True, default=None)
     jitsi_jwt_token: str = Field(strict=True)
+    smtp_host: str
+    smtp_port: int
+    smtp_from: str
 
     class Config:
         env_file = ".env"

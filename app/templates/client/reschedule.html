@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="font-family: inherit;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827;">Встреча перенесена</h2>
+        <p style="margin: 0; color: #4b5563; font-size: 16px;">
+            {{ client_name }}, время вашей консультации было изменено.
+        </p>
+    </div>
+
+    <!-- Details Card -->
+    <div style="background-color: #eef2ff; border-radius: 12px; padding: 24px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
+
+        <!-- Old Time -->
+        <div style="margin-bottom: 16px; display: flex; align-items: center;">
+             <span style="color: #dc2626; margin-right: 12px; font-weight: bold;">❌</span>
+             <span style="color: #9ca3af; text-decoration: line-through; font-size: 14px;">{{ old_date }} в {{ old_time }}</span>
+        </div>
+
+        <div style="margin-bottom: 16px; display: flex; align-items: center;">
+            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">📅</span>
+            <span style="font-weight: 500; color: #374151;">{{ new_date }} в {{ new_time }}</span>
+        </div>
+        <div style="margin-bottom: 16px; display: flex; align-items: center;">
+            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">⏳</span>
+            <span style="font-weight: 500; color: #374151;">Длительность: {{ duration }}</span>
+        </div>
+        <div style="display: flex; align-items: center;">
+            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">🌍</span>
+            <span style="font-weight: 500; color: #374151;">Часовой пояс: {{ timezone }}</span>
+        </div>
+    </div>
+
+    <!-- Buttons -->
+    <div style="margin-bottom: 24px;">
+        <a href="{{ meeting_link }}" style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; margin-bottom: 12px; box-sizing: border-box;">
+            Подключиться
+        </a>
+        <a href="{{ cancel_link }}" style="display: block; width: 100%; background-color: #ffffff; color: #dc2626; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; border: 1px solid #fecaca; box-sizing: border-box;">
+            Не подходит
+        </a>
+    </div>
+
+    <p style="text-align: center; font-size: 14px; color: #6b7280; margin: 0;">
+        Если новое время вам не подходит, пожалуйста, нажмите кнопку "Не подходит" или свяжитесь с нами.
+    </p>
+
+</div>
+{% endblock %}

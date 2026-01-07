@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="font-family: inherit;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827;">Встреча отменена</h2>
+        <p style="margin: 0; color: #4b5563; font-size: 16px;">
+            Здравствуйте, {{ organizer_name }}! Клиент {{ attendee_name }} отменил встречу.
+        </p>
+    </div>
+
+    <!-- Details Box -->
+    <div style="background-color: #eef2ff; border-radius: 12px; padding: 24px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
+
+        <!-- Scheduled Time -->
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">📅</span>
+            <div>
+                <span style="font-weight: 500; color: #374151;">{{ start_time }}</span>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">⏳</span>
+            <span style="font-weight: 500; color: #374151;">Длительность: {{ duration }}</span>
+        </div>
+
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <span style="color: #4f46e5; margin-right: 12px; font-weight: bold;">🌍</span>
+            <span style="font-weight: 500; color: #374151;">Часовой пояс: {{ time_zone }}</span>
+        </div>
+
+        <!-- Reason -->
+        {% if cancellation_reason %}
+        <div>
+            <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 500; color: #4f46e5;">ПРИЧИНА ОТМЕНЫ</p>
+            <p style="margin: 0; background-color: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #c7d2fe; color: #374151;">
+                {{ cancellation_reason }}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
