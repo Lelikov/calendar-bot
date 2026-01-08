@@ -1,13 +1,26 @@
 from databases import Database
 
+from app.dtos import UserDTO
+
 
 class BookingDatabaseAdapter:
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
 
-    async def get_user(self, email: str) -> dict | None:
+    async def get_user(self, email: str) -> UserDTO | None:
         async with Database(self.dsn) as database:
-            return await database.fetch_one(query="SELECT * FROM users WHERE email = :email", values={"email": email})
+            row = await database.fetch_one(query="SELECT * FROM users WHERE email = :email", values={"email": email})
+            if row:
+                return UserDTO(
+                    id=row["id"],
+                    name=row["name"],
+                    email=row["email"],
+                    locked=row["locked"],
+                    time_zone=row["timeZone"],
+                    telegram_chat_id=row["telegram_chat_id"],
+                    telegram_token=row["telegram_token"],
+                )
+            return None
 
     async def get_organizer_chat_id(self, email: str) -> int | None:
         async with Database(self.dsn) as database:

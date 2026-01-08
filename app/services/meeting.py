@@ -7,7 +7,7 @@ from dateutil import parser
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
-from app.schemas import BookingEventPayload
+from app.dtos import BookingEventPayloadDTO
 from app.settings import get_settings
 
 
@@ -27,7 +27,7 @@ class MeetingService:
     def _get_meeting_expiration(self, end_time: str) -> float:
         return parser.parse(end_time).timestamp() + self.timeshift
 
-    def _create_jitsi_token(self, *, booking_event_payload: BookingEventPayload, participant_name: str) -> str:
+    def _create_jitsi_token(self, *, booking_event_payload: BookingEventPayloadDTO, participant_name: str) -> str:
         payload = {
             "aud": cfg.meeting_jwt_aud,
             "iss": cfg.meeting_jwt_iss,
@@ -43,7 +43,7 @@ class MeetingService:
     async def _generate_url(
         self,
         *,
-        booking_event_payload: BookingEventPayload,
+        booking_event_payload: BookingEventPayloadDTO,
         participant_token: str,
         is_update_url_data: bool = False,
         external_id_prefix: str = "",
@@ -84,7 +84,7 @@ class MeetingService:
     async def setup_meeting(
         self,
         *,
-        booking_event_payload: BookingEventPayload,
+        booking_event_payload: BookingEventPayloadDTO,
         participant_name: str,
         is_update_url_data: bool = False,
         is_update_url_in_db: bool = False,

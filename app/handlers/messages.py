@@ -29,7 +29,7 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
     except (binascii.Error, UnicodeDecodeError, ValueError):
         logger.exception(f"Wrong payload {command.args}")
         await message.answer("Ошибка регистрации. Обратитесь к администратору")
-        return
+        return None
 
     async with Database(cfg.postgres_dsn) as database:
         query = "SELECT name, telegram_chat_id, telegram_token FROM users WHERE locked = FALSE AND id = :id "
@@ -40,13 +40,14 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
 
     if row["telegram_chat_id"]:
         await message.answer("Ваш email уже зарегистрирован")
-        return
+        return None
 
     if row["telegram_token"] == telegram_token:
         async with Database(cfg.postgres_dsn) as database:
             query = "UPDATE users SET telegram_chat_id = :telegram_chat_id WHERE id = :id"
             await database.execute(query=query, values={"id": user_id, "telegram_chat_id": message.chat.id})
             await message.answer(f"Добро пожаловать, {hbold(row['name'])}")
+    return None
 
 
 @telegram_router.message(F.text == "ping")

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import pytz
 import structlog
 from aiogram import Bot
@@ -8,7 +10,12 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.email import EmailService
-from app.schemas import BookingEventAttendee, BookingEventOrganizer, BookingEventPayload, TriggerEvent
+from app.dtos import (
+    BookingEventAttendeeDTO,
+    BookingEventOrganizerDTO,
+    BookingEventPayloadDTO,
+    TriggerEvent,
+)
 from app.settings import get_settings
 
 
@@ -19,7 +26,7 @@ TIME_FORMAT = "%d-%m-%Y %H:%M"
 
 
 class NotificationService:
-    EMAIL_TEMPLATES = {
+    EMAIL_TEMPLATES: ClassVar = {
         "organizer": {
             TriggerEvent.BOOKING_CREATED: ("organizer/confirmation.html", "✅Новая запись"),
             TriggerEvent.BOOKING_RESCHEDULED: ("organizer/reschedule.html", "↻Встреча перенесена"),
@@ -112,8 +119,8 @@ class NotificationService:
 
     async def notify_organizer_telegram(
         self,
-        organizer: BookingEventOrganizer,
-        booking_event_payload: BookingEventPayload,
+        organizer: BookingEventOrganizerDTO,
+        booking_event_payload: BookingEventPayloadDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
@@ -142,7 +149,7 @@ class NotificationService:
     def _prepare_email_context(
         self,
         *,
-        booking_event_payload: BookingEventPayload,
+        booking_event_payload: BookingEventPayloadDTO,
         trigger_event: TriggerEvent,
         participant_time_zone: str,
         meeting_url: str | None,
@@ -195,8 +202,8 @@ class NotificationService:
 
     async def notify_organizer_email(
         self,
-        organizer: BookingEventOrganizer,
-        booking_event_payload: BookingEventPayload,
+        organizer: BookingEventOrganizerDTO,
+        booking_event_payload: BookingEventPayloadDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
@@ -222,8 +229,8 @@ class NotificationService:
 
     async def notify_organizer(
         self,
-        organizer: BookingEventOrganizer,
-        booking_event_payload: BookingEventPayload,
+        organizer: BookingEventOrganizerDTO,
+        booking_event_payload: BookingEventPayloadDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
@@ -233,8 +240,8 @@ class NotificationService:
     async def notify_client_email(
         self,
         *,
-        attendee: BookingEventAttendee,
-        booking_event_payload: BookingEventPayload,
+        attendee: BookingEventAttendeeDTO,
+        booking_event_payload: BookingEventPayloadDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
@@ -259,7 +266,7 @@ class NotificationService:
 
     async def notify_client(
         self,
-        booking_event_payload: BookingEventPayload,
+        booking_event_payload: BookingEventPayloadDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
