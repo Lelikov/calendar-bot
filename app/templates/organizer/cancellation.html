@@ -5,40 +5,54 @@
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
     <tr>
         <td align="center">
-            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">Встреча отменена</h2>
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">
+                Встреча отменена</h2>
             <p style="margin: 0; color: #4b5563; font-size: 16px; font-family: inherit;">
-                Здравствуйте, {{ organizer_name }}! Клиент {{ attendee_name }} отменил встречу.
+                Здравствуйте, {{ organizer_name }}! Встреча с {{ attendee_name }} отменена.
             </p>
         </td>
     </tr>
 </table>
 
 <!-- Details Box -->
-<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #eef2ff; border-radius: 12px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+       style="background-color: #eef2ff; border-radius: 12px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
     <tr>
         <td style="padding: 24px;">
 
             <!-- Scheduled Time -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">📅</td>
-                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">{{ start_time }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">📅
+                    </td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">{{ start_time
+                        }}
+                    </td>
                 </tr>
             </table>
 
             <!-- Duration -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">⏳</td>
-                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Длительность: {{ duration }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">⏳
+                    </td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Длительность: {{
+                        duration }}
+                    </td>
                 </tr>
             </table>
 
             <!-- Timezone -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">🌍</td>
-                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Часовой пояс: {{ time_zone }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">🌍
+                    </td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Часовой пояс: {{
+                        time_zone }}
+                    </td>
                 </tr>
             </table>
 
@@ -47,7 +61,8 @@
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
                 <tr>
                     <td>
-                        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 500; color: #4f46e5; font-family: inherit;">ПРИЧИНА ОТМЕНЫ</p>
+                        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 500; color: #4f46e5; font-family: inherit;">
+                            ПРИЧИНА ОТМЕНЫ</p>
                         <p style="margin: 0; background-color: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #c7d2fe; color: #374151; font-family: inherit;">
                             {{ cancellation_reason }}
                         </p>

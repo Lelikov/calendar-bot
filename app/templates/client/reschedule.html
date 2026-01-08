@@ -5,48 +5,67 @@
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
     <tr>
         <td align="center">
-            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">Встреча перенесена</h2>
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">
+                Встреча перенесена</h2>
             <p style="margin: 0; color: #4b5563; font-size: 16px; font-family: inherit;">
-                {{ client_name }}, время вашей консультации было изменено.
+                {{ attendee_name }}, время вашей консультации было изменено.
             </p>
         </td>
     </tr>
 </table>
 
 <!-- Details Card -->
-<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #eef2ff; border-radius: 12px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+       style="background-color: #eef2ff; border-radius: 12px; border: 1px solid #e0e7ff; margin-bottom: 24px;">
     <tr>
         <td style="padding: 24px;">
 
             <!-- Old Time -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #dc2626; font-size: 16px;">❌</td>
-                    <td valign="middle" style="color: #9ca3af; text-decoration: line-through; font-size: 14px; font-family: inherit;">{{ old_date }} в {{ old_time }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #dc2626; font-size: 16px;">❌
+                    </td>
+                    <td valign="middle"
+                        style="color: #9ca3af; text-decoration: line-through; font-size: 14px; font-family: inherit;">{{
+                        start_time }}
+                    </td>
                 </tr>
             </table>
 
             <!-- New Time -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">📅</td>
-                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">{{ new_date }} в {{ new_time }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">📅
+                    </td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">{{
+                        reschedule_start_time }}
+                    </td>
                 </tr>
             </table>
 
             <!-- Duration -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 16px;">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">⏳</td>
-                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Длительность: {{ duration }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">⏳
+                    </td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Длительность: {{
+                        duration }}
+                    </td>
                 </tr>
             </table>
 
             <!-- Timezone -->
             <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
                 <tr>
-                    <td width="24" valign="middle" style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">🌍</td>
-                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Часовой пояс: {{ timezone }}</td>
+                    <td width="24" valign="middle"
+                        style="padding-right: 12px; font-weight: bold; color: #4f46e5; font-size: 16px;">🌍
+                    </td>
+                    <td valign="middle" style="font-weight: 500; color: #374151; font-family: inherit;">Часовой пояс: {{
+                        time_zone }}
+                    </td>
                 </tr>
             </table>
         </td>
@@ -57,11 +76,9 @@
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
     <tr>
         <td align="center">
-            <a href="{{ meeting_link }}" style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; margin-bottom: 12px; box-sizing: border-box; font-family: inherit;">
-                Подключиться
-            </a>
-            <a href="{{ cancel_link }}" style="display: block; width: 100%; background-color: #ffffff; color: #dc2626; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; border: 1px solid #fecaca; box-sizing: border-box; font-family: inherit;">
-                Не подходит
+            <a href="{{ meeting_url }}"
+               style="display: block; width: 100%; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-weight: 600; padding: 16px 24px; border-radius: 8px; text-align: center; margin-bottom: 12px; box-sizing: border-box; font-family: inherit;">
+                Подключиться к встрече
             </a>
         </td>
     </tr>
@@ -72,7 +89,8 @@
     <tr>
         <td align="center">
             <p style="text-align: center; font-size: 14px; color: #6b7280; margin: 0; font-family: inherit;">
-                Если новое время вам не подходит, пожалуйста, нажмите кнопку "Не подходит" или свяжитесь с нами.
+                Если новое время вам не подходит, пожалуйста, свяжитесь с нами <a href="{{ support_email }}">{{
+                support_email }}</a>
             </p>
         </td>
     </tr>

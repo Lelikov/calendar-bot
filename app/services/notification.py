@@ -19,6 +19,19 @@ TIME_FORMAT = "%d-%m-%Y %H:%M"
 
 
 class NotificationService:
+    EMAIL_TEMPLATES = {
+        "organizer": {
+            TriggerEvent.BOOKING_CREATED: ("organizer/confirmation.html", "✅Новая запись"),
+            TriggerEvent.BOOKING_RESCHEDULED: ("organizer/reschedule.html", "↻Встреча перенесена"),
+            TriggerEvent.BOOKING_CANCELLED: ("organizer/cancellation.html", "❌Встреча отменена"),
+        },
+        "client": {
+            TriggerEvent.BOOKING_CREATED: ("client/confirmation.html", "✅Новая запись"),
+            TriggerEvent.BOOKING_RESCHEDULED: ("client/reschedule.html", "↻Встреча перенесена"),
+            TriggerEvent.BOOKING_CANCELLED: ("client/cancellation.html", "❌Встреча отменена"),
+        },
+    }
+
     def __init__(self, db: BookingDatabaseAdapter, bot: Bot) -> None:
         self.db = db
         self.bot = bot
@@ -37,12 +50,19 @@ class NotificationService:
         return get_timezone_location(time_zone, locale="ru", return_city=True)
 
     @staticmethod
-    def _get_organizer_time(organizer_tz_str: str, start_time: str | None) -> str:
+    def _get_participant_time(participant_tz_str: str, start_time: str | None) -> str:
         if not start_time:
             return ""
-        organizer_tz = pytz.timezone(organizer_tz_str)
+        organizer_tz = pytz.timezone(participant_tz_str)
         parsed_time = parser.parse(start_time)
         return parsed_time.astimezone(organizer_tz).strftime(TIME_FORMAT)
+
+    @staticmethod
+    def _calculate_duration(start_time: str, end_time: str) -> str:
+        start_dt = parser.parse(start_time)
+        end_dt = parser.parse(end_time)
+        duration_min = int((end_dt - start_dt).total_seconds() / 60)
+        return f"{duration_min} мин"
 
     def _get_notification_text(
         self,
@@ -54,8 +74,8 @@ class NotificationService:
         trigger_event: TriggerEvent,
         reschedule_start_time: str | None = None,
     ) -> str | None:
-        organizer_time = self._get_organizer_time(
-            organizer_tz_str=time_zone,
+        organizer_time = self._get_participant_time(
+            participant_tz_str=time_zone,
             start_time=start_time,
         )
 
@@ -68,10 +88,10 @@ class NotificationService:
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
 
 🔗 <a href="{meeting_url}">Ссылка на встречу</a>
-👤 <a href="https://booking.zhivaya.org/booking/{booking_uid}">Информация o клиенте</a>"""
+👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
         elif trigger_event == TriggerEvent.BOOKING_RESCHEDULED:
-            previous_time = self._get_organizer_time(organizer_tz_str=time_zone, start_time=reschedule_start_time)
+            previous_time = self._get_participant_time(participant_tz_str=time_zone, start_time=reschedule_start_time)
             messages[TriggerEvent.BOOKING_RESCHEDULED] = f"""↻ <b>Встреча перенесена</b>
 
 📅 <b>Предыдущее время начала:</b> {previous_time}
@@ -79,14 +99,14 @@ class NotificationService:
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
 
 🔗 <a href="{meeting_url}">Ссылка на встречу</a>
-👤 <a href="https://booking.zhivaya.org/booking/{booking_uid}">Информация o клиенте</a>"""
+👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
         elif trigger_event == TriggerEvent.BOOKING_CANCELLED:
             messages[TriggerEvent.BOOKING_CANCELLED] = f"""❌ <b>Встреча отменена</b>
 
 📅 <b>Время начала:</b> {organizer_time}
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
-👤 <a href="https://booking.zhivaya.org/booking/{booking_uid}">Информация o клиенте</a>"""
+👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
         return messages.get(trigger_event)
 
@@ -119,6 +139,60 @@ class NotificationService:
                 link_preview_options=LinkPreviewOptions(is_disabled=True),
             )
 
+    def _prepare_email_context(
+        self,
+        *,
+        booking_event_payload: BookingEventPayload,
+        trigger_event: TriggerEvent,
+        participant_time_zone: str,
+        meeting_url: str | None,
+        additional_context: dict,
+    ) -> dict:
+        participant_time = self._get_participant_time(participant_time_zone, booking_event_payload.start_time)
+
+        context = {
+            "duration": self._calculate_duration(booking_event_payload.start_time, booking_event_payload.end_time),
+            "time_zone": self.get_time_zone_city(time_zone=participant_time_zone),
+            "meeting_url": meeting_url,
+            "cancellation_reason": booking_event_payload.cancellation_reason,
+            **additional_context,
+        }
+
+        if trigger_event == TriggerEvent.BOOKING_RESCHEDULED:
+            previous_time = self._get_participant_time(
+                participant_time_zone,
+                booking_event_payload.reschedule_start_time,
+            )
+            context["start_time"] = previous_time
+            context["reschedule_start_time"] = participant_time
+        else:
+            context["start_time"] = participant_time
+
+        return context
+
+    async def _send_email_notification(
+        self,
+        *,
+        recipient_email: str,
+        role: str,
+        trigger_event: TriggerEvent,
+        context: dict,
+    ) -> None:
+        template_info = self.EMAIL_TEMPLATES.get(role, {}).get(trigger_event)
+        if not template_info:
+            logger.warning("No email template for trigger event", trigger_event=trigger_event, role=role)
+            return
+
+        template_name, subject = template_info
+
+        try:
+            template = self.jinja_env.get_template(template_name)
+            html_content = template.render(**context)
+            self.email_service.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
+            logger.info(f"Sending email to {role}", email=recipient_email, trigger_event=trigger_event)
+        except Exception:
+            logger.exception(f"Error sending email to {role}")
+
     async def notify_organizer_email(
         self,
         organizer: BookingEventOrganizer,
@@ -126,55 +200,25 @@ class NotificationService:
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
-        template_name = None
-        subject = None
-
-        if trigger_event == TriggerEvent.BOOKING_CREATED:
-            template_name = "organizer/confirmation.html"
-            subject = "✅Новая запись"
-        if trigger_event == TriggerEvent.BOOKING_RESCHEDULED:
-            template_name = "organizer/reschedule.html"
-            subject = "↻Встреча перенесена"
-        if trigger_event == TriggerEvent.BOOKING_CANCELLED:
-            template_name = "organizer/cancellation.html"
-            subject = "❌Встреча отменена"
-
-        if not template_name:
-            logger.warning("No email template for trigger event", trigger_event=trigger_event)
-            return
-
         attendee_name = booking_event_payload.attendees[0].name if booking_event_payload.attendees else "Unknown"
 
-        start_dt = parser.parse(booking_event_payload.start_time)
-        end_dt = parser.parse(booking_event_payload.end_time)
-        duration_min = int((end_dt - start_dt).total_seconds() / 60)
-        duration = f"{duration_min} мин"
+        context = self._prepare_email_context(
+            booking_event_payload=booking_event_payload,
+            trigger_event=trigger_event,
+            participant_time_zone=organizer.time_zone,
+            meeting_url=meeting_url,
+            additional_context={
+                "organizer_name": organizer.name,
+                "attendee_name": attendee_name,
+            },
+        )
 
-        organizer_time = self._get_organizer_time(organizer.time_zone, booking_event_payload.start_time)
-
-        context = {
-            "organizer_name": organizer.name,
-            "attendee_name": attendee_name,
-            "duration": duration,
-            "time_zone": self.get_time_zone_city(time_zone=organizer.time_zone),
-            "meeting_url": meeting_url,
-            "cancellation_reason": booking_event_payload.cancellation_reason,
-        }
-
-        if trigger_event == TriggerEvent.BOOKING_RESCHEDULED:
-            previous_time = self._get_organizer_time(organizer.time_zone, booking_event_payload.reschedule_start_time)
-            context["start_time"] = previous_time
-            context["reschedule_start_time"] = organizer_time
-        else:
-            context["start_time"] = organizer_time
-
-        try:
-            template = self.jinja_env.get_template(template_name)
-            html_content = template.render(**context)
-            self.email_service.send_email(to_email=organizer.email, subject=subject, html_content=html_content)
-            logger.info("Sending email to organizer", email=organizer.email, trigger_event=trigger_event)
-        except Exception:
-            logger.exception("Error sending email to organizer")
+        await self._send_email_notification(
+            recipient_email=organizer.email,
+            role="organizer",
+            trigger_event=trigger_event,
+            context=context,
+        )
 
     async def notify_organizer(
         self,
@@ -188,15 +232,30 @@ class NotificationService:
 
     async def notify_client_email(
         self,
+        *,
         attendee: BookingEventAttendee,
         booking_event_payload: BookingEventPayload,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
-        # TODO: Implement email sending logic when client templates are available
-        # template = self.jinja_env.get_template("client_notification.html")
-        # body = template.render(...)
-        logger.info("Sending email to client (skeleton)", email=attendee.email, trigger_event=trigger_event)
+        context = self._prepare_email_context(
+            booking_event_payload=booking_event_payload,
+            trigger_event=trigger_event,
+            participant_time_zone=attendee.time_zone,
+            meeting_url=meeting_url,
+            additional_context={
+                "attendee_name": attendee.name,
+                "cancel_link": f"{cfg.booking_host_url}/booking/{booking_event_payload.uid}",
+                "support_email": cfg.support_email,
+            },
+        )
+
+        await self._send_email_notification(
+            recipient_email=attendee.email,
+            role="client",
+            trigger_event=trigger_event,
+            context=context,
+        )
 
     async def notify_client(
         self,
@@ -204,5 +263,9 @@ class NotificationService:
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
-        for attendee in booking_event_payload.attendees:
-            await self.notify_client_email(attendee, booking_event_payload, trigger_event, meeting_url)
+        await self.notify_client_email(
+            attendee=booking_event_payload.attendees[0],
+            booking_event_payload=booking_event_payload,
+            trigger_event=trigger_event,
+            meeting_url=meeting_url,
+        )

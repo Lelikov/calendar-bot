@@ -7,23 +7,29 @@ from pydantic_settings import BaseSettings
 
 @final
 class Settings(BaseSettings):
-    debug: bool = False
-    log_level: str = "DEBUG"
-    redis_url: str = "redis://localhost:6379/0"
-    bot_token: str
     base_webhook_url: str
-    webhook_path: str = "/telegram"
-    telegram_my_token: str
-    is_check_first_run: bool = False
-    postgres_dsn: str = Field(strict=True)
+    booking_host_url: str = "localhost:3000"
+    bot_token: str
     cal_signature: str = Field(strict=True)
+    debug: bool = False
+    is_check_first_run: bool = False
+    jitsi_jwt_token: str = Field(strict=True)
+    log_level: str = "DEBUG"
+    meeting_host_url: str = "localhost:8080"
+    meeting_jwt_aud: str
+    meeting_jwt_iss: str
     openai_api_key: str = Field(strict=True, default="")
+    postgres_dsn: str = Field(strict=True)
+    redis_url: str = "redis://localhost:6379/0"
     sentry_dsn: str | None = Field(strict=True, default=None)
     shortify_api_key: str | None = Field(strict=True, default=None)
-    jitsi_jwt_token: str = Field(strict=True)
+    shortner_url: str
+    smtp_from: str
     smtp_host: str
     smtp_port: int
-    smtp_from: str
+    support_email: str = "info@localhost.local"
+    telegram_my_token: str
+    webhook_path: str = "/telegram"
 
     class Config:
         env_file = ".env"

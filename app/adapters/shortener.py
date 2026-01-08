@@ -9,7 +9,7 @@ cfg = get_settings()
 
 
 class UrlShortenerAdapter:
-    BASE_URL = "https://meet.s.zhivaya.org"
+    BASE_URL = cfg.shortner_url
 
     async def create_short_url(self, long_url: str, expires_at: float, external_id: str) -> str | None:
         if not cfg.shortify_api_key:
@@ -35,7 +35,7 @@ class UrlShortenerAdapter:
                 logger.exception("Failed to shorten URL")
         return None
 
-    async def update_short_url(
+    async def update_url_data(
         self,
         long_url: str,
         expires_at: float,
