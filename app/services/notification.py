@@ -47,6 +47,7 @@ class NotificationService:
             autoescape=select_autoescape(),
         )
         self.email_service = EmailService(from_email=cfg.from_email, from_email_name=cfg.from_email_name)
+        self.timeshift = 5 * 60
 
     @staticmethod
     def get_time_zone_city(*, time_zone: str) -> str:
@@ -60,11 +61,10 @@ class NotificationService:
         parsed_time = parser.parse(start_time)
         return parsed_time.astimezone(organizer_tz).strftime(TIME_FORMAT)
 
-    @staticmethod
-    def _calculate_duration(start_time: str, end_time: str) -> str:
+    def _calculate_duration(self, start_time: str, end_time: str) -> str:
         start_dt = parser.parse(start_time)
         end_dt = parser.parse(end_time)
-        duration_min = int((end_dt - start_dt).total_seconds() / 60)
+        duration_min = int(((end_dt - start_dt).total_seconds() - self.timeshift) / 60)
         return f"{duration_min} мин"
 
     def _get_notification_text(
