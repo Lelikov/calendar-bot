@@ -46,11 +46,7 @@ class NotificationService:
             loader=FileSystemLoader("app/templates"),
             autoescape=select_autoescape(),
         )
-        self.email_service = EmailService(
-            host=cfg.smtp_host,
-            port=cfg.smtp_port,
-            from_email=cfg.smtp_from,
-        )
+        self.email_service = EmailService(from_email=cfg.from_email, from_email_name=cfg.from_email_name)
 
     @staticmethod
     def get_time_zone_city(*, time_zone: str) -> str:
@@ -195,7 +191,7 @@ class NotificationService:
         try:
             template = self.jinja_env.get_template(template_name)
             html_content = template.render(**context)
-            self.email_service.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
+            await self.email_service.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
             logger.info(f"Sending email to {role}", email=recipient_email, trigger_event=trigger_event)
         except Exception:
             logger.exception(f"Error sending email to {role}")

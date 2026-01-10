@@ -7,7 +7,7 @@ dependencies = [
     "aiogram>=3.17.0",
     "fastapi>=0.115.7",
     "httpx>=0.28.1",
-    "pydantic>=2.10.6",
+    "pydantic[email]>=2.10.6",
     "pydantic-settings>=2.7.1",
     "redis>=5.2.1",
     "uvicorn>=0.34.0",
@@ -24,6 +24,9 @@ dependencies = [
     "babel>=2.17.0",
     "pre-commit>=4.5.1",
     "jinja2>=3.1.6",
+    "postal-py>=0.0.5",
+    "niquests>=3.16.1",
+    "tenacity>=9.1.2",
 ]
 
 [dependency-groups]

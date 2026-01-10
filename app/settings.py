@@ -24,9 +24,10 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = Field(strict=True, default=None)
     shortify_api_key: str | None = Field(strict=True, default=None)
     shortner_url: str
-    smtp_from: str
-    smtp_host: str
-    smtp_port: int
+    from_email: str
+    from_email_name: str
+    email_api_url: str
+    email_api_key: str = Field(strict=True)
     support_email: str = "info@localhost.local"
     telegram_my_token: str
     webhook_path: str = "/telegram"
