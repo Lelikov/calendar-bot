@@ -7,64 +7,75 @@
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1f2937;">
 
-    <!-- Main Wrapper -->
-    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f3f4f6; width: 100%;">
-        <tr>
-            <td align="center" style="padding: 40px 0;">
+<!-- Main Wrapper -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #f3f4f6; width: 100%;">
+    <tr>
+        <td align="center" style="padding: 40px 0;">
 
-                <!-- Email Container -->
-                <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); max-width: 600px; width: 100%;">
+            <!-- Email Container -->
+            <table width="600" cellpadding="0" cellspacing="0" role="presentation"
+                   style="background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); max-width: 600px; width: 100%;">
 
-                    <!-- Preheader -->
-                    <tr>
-                        <td style="display: none; max-height: 0px; overflow: hidden; font-size: 0; line-height: 0;">
-                            {{ preview_text }}
-                            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
-                        </td>
-                    </tr>
+                <!-- Preheader -->
+                <tr>
+                    <td style="display: none; max-height: 0px; overflow: hidden; font-size: 0; line-height: 0;">
+                        {{ preview_text }}
+                        &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+                    </td>
+                </tr>
 
-                    <!-- Content Area -->
-                    <tr>
-                        <td style="padding: 32px;">
+                <!-- Content Area -->
+                <tr>
+                    <td style="padding: 32px;">
 
-                            <!-- Logo / Brand Header -->
-                            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-                                <tr>
-                                    <td align="center" style="padding-bottom: 32px;">
-                                        <div style="margin-bottom: 16px;">
-                                            <svg width="1114" height="205" viewBox="0 0 1114 205" fill="none" xmlns="http://www.w3.org/2000/svg" style="height: 24px; width: auto; max-width: 100%;">
-<path d="M1027.43 30.966C1016.34 30.966 1007.17 34.12 999.902 40.4279C992.638 46.5446 989.006 54.2861 989.006 63.6524C989.006 73.2098 992.638 81.238 999.902 87.7371C1007.36 94.2361 1016.53 97.4856 1027.43 97.4856H1081.62V30.966H1027.43ZM1011.37 125.298C995.505 123.577 982.316 117.078 971.803 105.801C961.29 94.3317 956.033 80.569 956.033 64.5126C956.033 45.3977 962.437 29.9147 975.244 18.0635C988.242 6.02117 1004.68 0 1024.56 0H1113.16V200.706H1081.62V128.165H1046.64L993.02 200.706H956.033L1011.37 125.298Z" fill="#02131C"/>
-<path d="M888.467 182.349C888.467 175.85 890.569 170.402 894.775 166.006C898.98 161.609 904.237 159.411 910.544 159.411C917.235 159.411 922.778 161.609 927.174 166.006C931.571 170.402 933.769 175.85 933.769 182.349C933.769 188.848 931.571 194.296 927.174 198.692C922.969 202.897 917.617 205 911.118 205C904.619 205 899.171 202.897 894.775 198.692C890.569 194.296 888.467 188.848 888.467 182.349Z" fill="#3A5C6E"/>
-<path d="M710.037 121.57H824.726V151.389H710.037V121.57ZM700.861 200.706H664.734L746.737 0H788.025L870.601 200.706H834.474L767.954 32.6864L700.861 200.706Z" fill="#02131C"/>
-<path d="M581.486 30.966H516.114V84.8699H582.92C590.566 84.8699 596.969 82.0982 602.13 76.5549C607.483 70.8204 610.159 63.8435 610.159 55.6242C610.159 48.3605 607.387 42.4349 601.844 37.8474C596.492 33.2598 589.706 30.966 581.486 30.966ZM582.92 115.262H516.114V169.74H584.354C592.573 169.74 599.359 167.35 604.711 162.572C610.254 157.602 613.026 151.581 613.026 144.508C613.026 136.098 610.159 129.121 604.424 123.577C598.69 118.034 591.522 115.262 582.92 115.262ZM587.508 200.706H484.574V0H584.64C601.079 0 614.651 4.87428 625.355 14.6228C636.25 24.3714 641.698 36.7005 641.698 51.61C641.698 61.7409 639.309 71.1072 634.53 79.7088C629.751 88.1194 623.252 94.6184 615.033 99.206C624.208 103.794 631.376 110.484 636.537 119.277C641.889 127.878 644.565 137.436 644.565 147.949C644.565 163.049 639.118 175.665 628.222 185.796C617.327 195.736 603.755 200.706 587.508 200.706Z" fill="#02131C"/>
-<path d="M452.906 200.706H421.367V48.1694L323.308 200.706H286.607V0H318.147V151.103L416.206 0H452.906V200.706Z" fill="#02131C"/>
-<path d="M115.262 0H146.802V84.0097H166.299L226.511 0H262.638L190.957 99.7794L262.638 200.706H226.511L166.299 116.409H146.802V200.706H115.262V116.409H96.3388L34.4067 200.706H0L71.6806 100.64L0 0H34.4067L96.3388 84.0097H115.262V0Z" fill="#02131C"/>
-</svg>
-                                        </div>
-                                        <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #111827; letter-spacing: -0.025em; font-family: inherit;">Встреча с психологом-волонтером</h1>
-                                    </td>
-                                </tr>
-                            </table>
+                        <!-- Logo / Brand Header -->
+                        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                            <tr>
+                                <td align="center" style="padding-bottom: 32px;">
+                                    <div style="margin-bottom: 16px;">
+                                        <svg width="1114" height="205" viewBox="0 0 1114 205" fill="none"
+                                             xmlns="http://www.w3.org/2000/svg"
+                                             style="height: 24px; width: auto; max-width: 100%;">
+                                            <path d="M1027.43 30.966C1016.34 30.966 1007.17 34.12 999.902 40.4279C992.638 46.5446 989.006 54.2861 989.006 63.6524C989.006 73.2098 992.638 81.238 999.902 87.7371C1007.36 94.2361 1016.53 97.4856 1027.43 97.4856H1081.62V30.966H1027.43ZM1011.37 125.298C995.505 123.577 982.316 117.078 971.803 105.801C961.29 94.3317 956.033 80.569 956.033 64.5126C956.033 45.3977 962.437 29.9147 975.244 18.0635C988.242 6.02117 1004.68 0 1024.56 0H1113.16V200.706H1081.62V128.165H1046.64L993.02 200.706H956.033L1011.37 125.298Z"
+                                                  fill="#02131C"/>
+                                            <path d="M888.467 182.349C888.467 175.85 890.569 170.402 894.775 166.006C898.98 161.609 904.237 159.411 910.544 159.411C917.235 159.411 922.778 161.609 927.174 166.006C931.571 170.402 933.769 175.85 933.769 182.349C933.769 188.848 931.571 194.296 927.174 198.692C922.969 202.897 917.617 205 911.118 205C904.619 205 899.171 202.897 894.775 198.692C890.569 194.296 888.467 188.848 888.467 182.349Z"
+                                                  fill="#3A5C6E"/>
+                                            <path d="M710.037 121.57H824.726V151.389H710.037V121.57ZM700.861 200.706H664.734L746.737 0H788.025L870.601 200.706H834.474L767.954 32.6864L700.861 200.706Z"
+                                                  fill="#02131C"/>
+                                            <path d="M581.486 30.966H516.114V84.8699H582.92C590.566 84.8699 596.969 82.0982 602.13 76.5549C607.483 70.8204 610.159 63.8435 610.159 55.6242C610.159 48.3605 607.387 42.4349 601.844 37.8474C596.492 33.2598 589.706 30.966 581.486 30.966ZM582.92 115.262H516.114V169.74H584.354C592.573 169.74 599.359 167.35 604.711 162.572C610.254 157.602 613.026 151.581 613.026 144.508C613.026 136.098 610.159 129.121 604.424 123.577C598.69 118.034 591.522 115.262 582.92 115.262ZM587.508 200.706H484.574V0H584.64C601.079 0 614.651 4.87428 625.355 14.6228C636.25 24.3714 641.698 36.7005 641.698 51.61C641.698 61.7409 639.309 71.1072 634.53 79.7088C629.751 88.1194 623.252 94.6184 615.033 99.206C624.208 103.794 631.376 110.484 636.537 119.277C641.889 127.878 644.565 137.436 644.565 147.949C644.565 163.049 639.118 175.665 628.222 185.796C617.327 195.736 603.755 200.706 587.508 200.706Z"
+                                                  fill="#02131C"/>
+                                            <path d="M452.906 200.706H421.367V48.1694L323.308 200.706H286.607V0H318.147V151.103L416.206 0H452.906V200.706Z"
+                                                  fill="#02131C"/>
+                                            <path d="M115.262 0H146.802V84.0097H166.299L226.511 0H262.638L190.957 99.7794L262.638 200.706H226.511L166.299 116.409H146.802V200.706H115.262V116.409H96.3388L34.4067 200.706H0L71.6806 100.64L0 0H34.4067L96.3388 84.0097H115.262V0Z"
+                                                  fill="#02131C"/>
+                                        </svg>
+                                    </div>
+                                    <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #111827; letter-spacing: -0.025em; font-family: inherit;">
+                                        Встреча с психологом-волонтером</h1>
+                                </td>
+                            </tr>
+                        </table>
 
-                            <!-- Main Content Block -->
-                            {% block content %}{% endblock %}
+                        <!-- Main Content Block -->
+                        {% block content %}{% endblock %}
 
-                            <!-- Footer -->
-                            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 48px; border-top: 1px solid #f3f4f6;">
-                                <tr>
-                                    <td align="center" style="padding-top: 32px; font-size: 12px; color: #9ca3af;">
-                                        <p style="margin-bottom: 8px; margin-top: 0;">© 2024 Психологическая практика. Все права защищены.</p>
-                                        <p style="margin: 0;">Это автоматическое письмо, пожалуйста, не отвечайте на него.</p>
-                                    </td>
-                                </tr>
-                            </table>
+                        <!-- Footer -->
+                        <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+                               style="margin-top: 48px; border-top: 1px solid #f3f4f6;">
+                            <tr>
+                                <td align="center" style="padding-top: 32px; font-size: 12px; color: #9ca3af;">
+                                    <p style="margin-bottom: 8px; margin-top: 0;">©2026 АНО “Центр социального развития
+                                        и помощи женщинам “ЖИВАЯ”</p>
+                                </td>
+                            </tr>
+                        </table>
 
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
 </body>
 </html>

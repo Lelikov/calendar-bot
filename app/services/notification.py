@@ -22,7 +22,7 @@ from app.settings import get_settings
 logger = structlog.get_logger(__name__)
 cfg = get_settings()
 
-TIME_FORMAT = "%d-%m-%Y %H:%M"
+TIME_FORMAT = "%d-%m-%Y, %H:%M"
 
 
 class NotificationService:
@@ -35,7 +35,7 @@ class NotificationService:
         "client": {
             TriggerEvent.BOOKING_CREATED: ("client/confirmation.html", "✅Новая запись"),
             TriggerEvent.BOOKING_RESCHEDULED: ("client/reschedule.html", "↻Встреча перенесена"),
-            TriggerEvent.BOOKING_CANCELLED: ("client/cancellation.html", "❌Встреча отменена"),
+            TriggerEvent.BOOKING_CANCELLED: ("client/cancellation.html", "❌Ваша встреча отменена"),
         },
     }
 
