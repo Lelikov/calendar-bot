@@ -11,9 +11,8 @@ cfg = get_settings()
 class UrlShortenerAdapter:
     BASE_URL = cfg.shortner_url
 
-    async def create_short_url(self, long_url: str, expires_at: float, external_id: str) -> str | None:
-        if not cfg.shortify_api_key:
-            logger.warning("Shortify API key is not set")
+    async def create_url(self, long_url: str, expires_at: float, external_id: str) -> str | None:
+        if not self._check_api_key():
             return None
 
         async with httpx.AsyncClient() as client:
@@ -42,8 +41,7 @@ class UrlShortenerAdapter:
         old_external_id: str,
         new_external_id: str,
     ) -> str | None:
-        if not cfg.shortify_api_key:
-            logger.warning("Shortify API key is not set")
+        if not self._check_api_key():
             return None
 
         async with httpx.AsyncClient() as client:
@@ -62,5 +60,27 @@ class UrlShortenerAdapter:
                 if ident := data.get("ident"):
                     return f"{self.BASE_URL}/{ident}"
             except Exception:
-                logger.exception("Failed to shorten URL")
+                logger.exception("Failed to update shorten URL")
         return None
+
+    async def delete_url(self, *, external_id: str) -> str | None:
+        if not self._check_api_key():
+            return None
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.delete(
+                    f"{self.BASE_URL}/api/v1/urls/external/{external_id}",
+                    headers={"Content-Type": "application/json", "api-key": cfg.shortify_api_key},
+                )
+                response.raise_for_status()
+                logger.info(f"Shortened URL {external_id} deleted")
+            except Exception:
+                logger.exception("Failed to delete shorten URL")
+        return None
+
+    @staticmethod
+    def _check_api_key() -> bool:
+        if not cfg.shortify_api_key:
+            logger.warning("Shortify API key is not set")
+        return bool(cfg.shortify_api_key)

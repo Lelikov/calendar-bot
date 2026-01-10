@@ -24,6 +24,37 @@ class MeetingService:
         self.shortener = shortener
         self.timeshift = 5 * 60
 
+    async def setup_meeting(
+        self,
+        *,
+        booking_event_payload: BookingEventPayloadDTO,
+        participant_name: str,
+        is_update_url_data: bool = False,
+        is_update_url_in_db: bool = False,
+        external_id_prefix: str = "",
+    ) -> str:
+        meeting_url = await self._generate_url(
+            booking_event_payload=booking_event_payload,
+            participant_token=self._create_jitsi_token(
+                booking_event_payload=booking_event_payload,
+                participant_name=participant_name,
+            ),
+            is_update_url_data=is_update_url_data,
+            external_id_prefix=external_id_prefix,
+        )
+        if is_update_url_in_db:
+            await self._ensure_metadata_sync(booking_event_payload.uid)
+            await self.db.update_booking_video_url(booking_event_payload.uid, meeting_url)
+        return meeting_url
+
+    async def delete_meeting(
+        self,
+        *,
+        booking_event_payload: BookingEventPayloadDTO,
+        external_id_prefix: str = "",
+    ) -> None:
+        await self.shortener.delete_url(external_id=f"{external_id_prefix}{booking_event_payload.uid}")
+
     def _get_meeting_expiration(self, end_time: str) -> float:
         return parser.parse(end_time).timestamp() + self.timeshift
 
@@ -62,7 +93,7 @@ class MeetingService:
                     old_external_id=old_external_id,
                 )
             else:
-                short_url = await self.shortener.create_short_url(
+                short_url = await self.shortener.create_url(
                     long_url=long_url,
                     expires_at=expires_at,
                     external_id=external_id_prefix + booking_event_payload.uid,
@@ -80,26 +111,3 @@ class MeetingService:
             metadata = await self.db.get_booking_metadata(uid)
             if metadata and str(metadata) != "{}":
                 return
-
-    async def setup_meeting(
-        self,
-        *,
-        booking_event_payload: BookingEventPayloadDTO,
-        participant_name: str,
-        is_update_url_data: bool = False,
-        is_update_url_in_db: bool = False,
-        external_id_prefix: str = "",
-    ) -> str:
-        meeting_url = await self._generate_url(
-            booking_event_payload=booking_event_payload,
-            participant_token=self._create_jitsi_token(
-                booking_event_payload=booking_event_payload,
-                participant_name=participant_name,
-            ),
-            is_update_url_data=is_update_url_data,
-            external_id_prefix=external_id_prefix,
-        )
-        if is_update_url_in_db:
-            await self._ensure_metadata_sync(booking_event_payload.uid)
-            await self.db.update_booking_video_url(booking_event_payload.uid, meeting_url)
-        return meeting_url

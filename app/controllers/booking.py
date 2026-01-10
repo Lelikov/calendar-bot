@@ -19,6 +19,7 @@ class BookingController:
         self.meeting_service = MeetingService(db, shortener)
         self.notification_service = NotificationService(db, bot)
         self.background_tasks: set[Task] = set()
+        self.client_meeting_prefix = "client_"
 
     async def _process_booking_flow(
         self,
@@ -45,7 +46,7 @@ class BookingController:
             participant_name=booking_event_payload.attendees[0].name,
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=False,
-            external_id_prefix="client_",
+            external_id_prefix=self.client_meeting_prefix,
         )
         await self.notification_service.notify_client(
             booking_event_payload=booking_event_payload,
@@ -103,6 +104,11 @@ class BookingController:
             booking_event_payload=booking_event_payload,
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
+        )
+        await self.meeting_service.delete_meeting(booking_event_payload=booking_event_payload)
+        await self.meeting_service.delete_meeting(
+            booking_event_payload=booking_event_payload,
+            external_id_prefix=self.client_meeting_prefix,
         )
 
     async def _background_processing(self, booking_event: BookingEventDTO) -> None:
