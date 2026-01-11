@@ -203,7 +203,7 @@ class NotificationService:
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
-        attendee_name = booking_event_payload.attendees[0].name if booking_event_payload.attendees else "Unknown"
+        attendee_name = booking_event_payload.attendees[0].name if booking_event_payload.attendees else "Клиент"
 
         context = self._prepare_email_context(
             booking_event_payload=booking_event_payload,
@@ -266,6 +266,10 @@ class NotificationService:
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
     ) -> None:
+        if not booking_event_payload.attendees:
+            logger.warning("No attendees found for booking", booking_uid=booking_event_payload.uid)
+            return
+
         await self.notify_client_email(
             attendee=booking_event_payload.attendees[0],
             booking_event_payload=booking_event_payload,

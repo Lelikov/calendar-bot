@@ -43,7 +43,7 @@ class BookingController:
 
         client_meeting_url = await self.meeting_service.setup_meeting(
             booking_event_payload=booking_event_payload,
-            participant_name=booking_event_payload.attendees[0].name,
+            participant_name=booking_event_payload.attendees[0].name if booking_event_payload.attendees else "Клиент",
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=False,
             external_id_prefix=self.client_meeting_prefix,
