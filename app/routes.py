@@ -49,7 +49,8 @@ async def booking(
 ) -> None:
     if not cfg.debug and not await validate_signature(signature=signature, request=request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
-
+    request_body = await request.json()
+    logger.info(f"Received booking event {request_body}")
     await booking_controller.handle_booking(booking_event.to_dto())
     return None
 
