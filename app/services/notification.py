@@ -64,8 +64,11 @@ class NotificationService:
     def _calculate_duration(self, start_time: str, end_time: str) -> str:
         start_dt = parser.parse(start_time)
         end_dt = parser.parse(end_time)
-        duration_min = int(((end_dt - start_dt).total_seconds() - self.timeshift) / 60)
-        return f"{duration_min} мин"
+        duration_seconds = (end_dt - start_dt).total_seconds()
+        duration_minutes = int(duration_seconds / 60)
+        if duration_minutes >= 60:
+            duration_minutes -= self.timeshift
+        return f"{duration_minutes} мин"
 
     def _get_notification_text(
         self,

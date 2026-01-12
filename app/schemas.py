@@ -6,6 +6,9 @@ from app.dtos import (
     BookingEventDTO,
     BookingEventOrganizerDTO,
     BookingEventPayloadDTO,
+    MailWebhookEventDTO,
+    MailWebhookMessageDTO,
+    MailWebhookPayloadDTO,
     TriggerEvent,
 )
 
@@ -81,4 +84,67 @@ class BookingEvent(BaseCalComModel):
         return BookingEventDTO(
             payload=self.payload.to_dto(),
             trigger_event=self.trigger_event,
+        )
+
+
+class MailWebhookMessage(BaseModel):
+    direction: str
+    from_email: str = Field(alias="from")
+    id: int
+    message_id: str
+    spam_status: str
+    subject: str
+    tag: str | None
+    timestamp: float
+    to: str
+    token: str
+
+    def to_dto(self) -> MailWebhookMessageDTO:
+        return MailWebhookMessageDTO(
+            direction=self.direction,
+            from_email=self.from_email,
+            id=self.id,
+            message_id=self.message_id,
+            spam_status=self.spam_status,
+            subject=self.subject,
+            tag=self.tag,
+            timestamp=self.timestamp,
+            to=self.to,
+            token=self.token,
+        )
+
+
+class MailWebhookPayload(BaseModel):
+    details: str
+    message: MailWebhookMessage
+    output: str
+    sent_with_ssl: bool
+    status: str
+    time: float
+    timestamp: float
+
+    def to_dto(self) -> MailWebhookPayloadDTO:
+        return MailWebhookPayloadDTO(
+            details=self.details,
+            message=self.message.to_dto(),
+            output=self.output,
+            sent_with_ssl=self.sent_with_ssl,
+            status=self.status,
+            time=self.time,
+            timestamp=self.timestamp,
+        )
+
+
+class MailWebhookEvent(BaseModel):
+    event: str
+    payload: MailWebhookPayload
+    timestamp: float
+    uuid: str
+
+    def to_dto(self) -> MailWebhookEventDTO:
+        return MailWebhookEventDTO(
+            event=self.event,
+            payload=self.payload.to_dto(),
+            timestamp=self.timestamp,
+            uuid=self.uuid,
         )

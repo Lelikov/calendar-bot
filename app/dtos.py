@@ -55,3 +55,36 @@ class UserDTO:
     time_zone: str
     telegram_chat_id: int | None = None
     telegram_token: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MailWebhookMessageDTO:
+    direction: str
+    from_email: str
+    id: int
+    message_id: str
+    spam_status: str
+    subject: str
+    timestamp: float
+    to: str
+    token: str
+    tag: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MailWebhookPayloadDTO:
+    details: str
+    message: MailWebhookMessageDTO
+    output: str
+    sent_with_ssl: bool
+    status: str
+    time: float
+    timestamp: float
+
+
+@dataclass(frozen=True, slots=True)
+class MailWebhookEventDTO:
+    event: str
+    payload: MailWebhookPayloadDTO
+    timestamp: float
+    uuid: str

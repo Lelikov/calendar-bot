@@ -11,7 +11,7 @@ from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import bot, dp
 from app.controllers.booking import BookingController
-from app.schemas import BookingEvent
+from app.schemas import BookingEvent, MailWebhookEvent
 from app.settings import get_settings
 
 
@@ -51,6 +51,12 @@ async def booking(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
 
     await booking_controller.handle_booking(booking_event.to_dto())
+    return None
+
+
+@root_router.post("/mail/webhook")
+async def mail_webhook(event: MailWebhookEvent) -> None:
+    logger.info(event)
     return None
 
 
