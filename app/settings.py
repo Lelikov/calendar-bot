@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     support_email: str = "info@localhost.local"
     telegram_my_token: str
     webhook_path: str = "/telegram"
+    admin_chat_ids: list[int] = Field(default_factory=list)
 
     class Config:
         env_file = ".env"

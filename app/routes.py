@@ -11,6 +11,7 @@ from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import bot, dp
 from app.controllers.booking import BookingController
+from app.controllers.mail import MailController
 from app.schemas import BookingEvent, MailWebhookEvent
 from app.settings import get_settings
 
@@ -40,6 +41,10 @@ def get_booking_controller() -> BookingController:
     )
 
 
+def get_mail_controller() -> MailController:
+    return MailController(bot=bot, settings=cfg)
+
+
 @root_router.post("/booking")
 async def booking(
     booking_event: BookingEvent,
@@ -56,8 +61,12 @@ async def booking(
 
 
 @root_router.post("/mail/webhook")
-async def mail_webhook(event: MailWebhookEvent) -> None:
+async def mail_webhook(
+    event: MailWebhookEvent,
+    mail_controller: Annotated[MailController, Depends(get_mail_controller)],
+) -> None:
     logger.info(event)
+    await mail_controller.handle_webhook(event.to_dto())
     return None
 
 
