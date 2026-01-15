@@ -1,13 +1,13 @@
 import time
 from asyncio import sleep
+from datetime import datetime
 
 import jwt
 import structlog
-from dateutil import parser
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
-from app.dtos import BookingEventPayloadDTO
+from app.dtos import BookingDTO
 from app.settings import get_settings
 
 
@@ -27,46 +27,47 @@ class MeetingService:
     async def setup_meeting(
         self,
         *,
-        booking_event_payload: BookingEventPayloadDTO,
+        booking: BookingDTO,
         participant_name: str,
         is_update_url_data: bool = False,
         is_update_url_in_db: bool = False,
         external_id_prefix: str = "",
     ) -> str:
+        participant_token = self._create_jitsi_token(
+            booking=booking,
+            participant_name=participant_name,
+        )
         meeting_url = await self._generate_url(
-            booking_event_payload=booking_event_payload,
-            participant_token=self._create_jitsi_token(
-                booking_event_payload=booking_event_payload,
-                participant_name=participant_name,
-            ),
+            booking=booking,
+            participant_token=participant_token,
             is_update_url_data=is_update_url_data,
             external_id_prefix=external_id_prefix,
         )
         if is_update_url_in_db:
-            await self._ensure_metadata_sync(booking_event_payload.uid)
-            await self.db.update_booking_video_url(booking_event_payload.uid, meeting_url)
+            await self._ensure_metadata_sync(booking.uid)
+            await self.db.update_booking_video_url(booking.uid, meeting_url)
         return meeting_url
 
     async def delete_meeting(
         self,
         *,
-        booking_event_payload: BookingEventPayloadDTO,
+        booking: BookingDTO,
         external_id_prefix: str = "",
     ) -> None:
-        await self.shortener.delete_url(external_id=f"{external_id_prefix}{booking_event_payload.uid}")
+        await self.shortener.delete_url(external_id=f"{external_id_prefix}{booking.uid}")
 
-    def _get_meeting_expiration(self, end_time: str) -> float:
-        return parser.parse(end_time).timestamp() + self.timeshift
+    def _get_meeting_expiration(self, end_time: datetime) -> float:
+        return end_time.timestamp() + self.timeshift
 
-    def _create_jitsi_token(self, *, booking_event_payload: BookingEventPayloadDTO, participant_name: str) -> str:
+    def _create_jitsi_token(self, *, booking: BookingDTO, participant_name: str) -> str:
         payload = {
             "aud": cfg.meeting_jwt_aud,
             "iss": cfg.meeting_jwt_iss,
             "sub": "*",
-            "room": booking_event_payload.uid,
+            "room": booking.uid,
             "iat": int(time.time()),
-            "nbf": parser.parse(booking_event_payload.start_time).timestamp() - self.timeshift,
-            "exp": self._get_meeting_expiration(booking_event_payload.end_time),
+            "nbf": booking.start_time.timestamp() - self.timeshift,
+            "exp": self._get_meeting_expiration(booking.end_time),
             "context": {"user": {"name": participant_name}},
         }
         return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
@@ -74,29 +75,27 @@ class MeetingService:
     async def _generate_url(
         self,
         *,
-        booking_event_payload: BookingEventPayloadDTO,
+        booking: BookingDTO,
         participant_token: str,
         is_update_url_data: bool = False,
         external_id_prefix: str = "",
     ) -> str:
-        long_url = f"{cfg.meeting_host_url}/{booking_event_payload.uid}?jwt={participant_token}"
+        long_url = f"{cfg.meeting_host_url}/{booking.uid}?jwt={participant_token}"
         try:
-            expires_at = self._get_meeting_expiration(booking_event_payload.end_time)
+            expires_at = self._get_meeting_expiration(booking.end_time)
             if is_update_url_data:
-                old_external_id = external_id_prefix + (
-                    booking_event_payload.reschedule_uid or booking_event_payload.uid
-                )
+                old_external_id = external_id_prefix + (booking.from_reschedule or booking.uid)
                 short_url = await self.shortener.update_url_data(
                     long_url=long_url,
                     expires_at=expires_at,
-                    new_external_id=external_id_prefix + booking_event_payload.uid,
+                    new_external_id=external_id_prefix + booking.uid,
                     old_external_id=old_external_id,
                 )
             else:
                 short_url = await self.shortener.create_url(
                     long_url=long_url,
                     expires_at=expires_at,
-                    external_id=external_id_prefix + booking_event_payload.uid,
+                    external_id=external_id_prefix + booking.uid,
                 )
 
             final_url = short_url if short_url else long_url
@@ -108,6 +107,6 @@ class MeetingService:
     async def _ensure_metadata_sync(self, uid: str) -> None:
         for _ in range(METADATA_WAIT_ATTEMPTS):
             await sleep(METADATA_WAIT_DELAY)
-            metadata = await self.db.get_booking_metadata(uid)
-            if metadata and str(metadata) != "{}":
+            booking = await self.db.get_booking(uid)
+            if booking and booking.metadata and str(booking.metadata) != "{}":
                 return

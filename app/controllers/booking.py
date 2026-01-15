@@ -5,7 +5,7 @@ from aiogram import Bot
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
-from app.dtos import BookingEventDTO, BookingEventOrganizerDTO, TriggerEvent
+from app.dtos import BookingEventDTO, TriggerEvent
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
 
@@ -26,30 +26,32 @@ class BookingController:
         booking_event: BookingEventDTO,
         is_update_url_data: bool = False,
     ) -> None:
-        booking_event_payload = booking_event.payload
+        booking = await self.db.get_booking(booking_event.payload.uid)
+        if booking.from_reschedule:
+            booking.previous_booking = await self.db.get_booking(booking.from_reschedule)
 
         organizer_meeting_url = await self.meeting_service.setup_meeting(
-            booking_event_payload=booking_event_payload,
-            participant_name=booking_event_payload.organizer.name,
+            booking=booking,
+            participant_name=booking.user.name,
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=True,
         )
         await self.notification_service.notify_organizer(
-            organizer=booking_event_payload.organizer,
-            booking_event_payload=booking_event_payload,
+            user=booking.user,
+            booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=organizer_meeting_url,
         )
 
         client_meeting_url = await self.meeting_service.setup_meeting(
-            booking_event_payload=booking_event_payload,
-            participant_name=booking_event_payload.attendees[0].name if booking_event_payload.attendees else "Клиент",
+            booking=booking,
+            participant_name=booking.client.name,
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=False,
             external_id_prefix=self.client_meeting_prefix,
         )
         await self.notification_service.notify_client(
-            booking_event_payload=booking_event_payload,
+            booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=client_meeting_url,
         )
@@ -61,55 +63,46 @@ class BookingController:
         await self._process_booking_flow(booking_event=booking_event, is_update_url_data=True)
 
     async def _handle_reassigned(self, booking_event: BookingEventDTO) -> None:
-        booking_event_payload = booking_event.payload
-        previous_organizer = booking_event_payload.organizer
-
-        user = await self.db.get_user(email=booking_event_payload.new_organizer_email)
-
-        current_organizer = BookingEventOrganizerDTO(
-            name=user.name,
-            email=user.email,
-            time_zone=user.time_zone,
-        )
+        booking = await self.db.get_booking(booking_event.payload.uid)
+        previous_organizer = await self.db.get_user_by_id(user_id=booking.reassign_by_id)
 
         await self.notification_service.notify_organizer(
-            organizer=previous_organizer,
-            booking_event_payload=booking_event_payload,
+            user=previous_organizer,
+            booking=booking,
             trigger_event=TriggerEvent.BOOKING_CANCELLED,
             meeting_url=None,
         )
 
+        meeting_url = await self.meeting_service.setup_meeting(
+            booking=booking,
+            participant_name=booking.user.name,
+            is_update_url_data=True,
+            is_update_url_in_db=True,
+        )
+
         await self.notification_service.notify_organizer(
-            organizer=current_organizer,
-            booking_event_payload=booking_event_payload,
+            user=booking.user,
+            booking=booking,
             trigger_event=TriggerEvent.BOOKING_CREATED,
-            meeting_url=await self.meeting_service.setup_meeting(
-                booking_event_payload=booking_event_payload,
-                participant_name=current_organizer.name,
-                is_update_url_data=True,
-                is_update_url_in_db=True,
-            ),
+            meeting_url=meeting_url,
         )
 
     async def _handle_cancelled(self, booking_event: BookingEventDTO) -> None:
-        booking_event_payload = booking_event.payload
+        booking = await self.db.get_booking(booking_event.payload.uid)
 
         await self.notification_service.notify_organizer(
-            organizer=booking_event_payload.organizer,
-            booking_event_payload=booking_event_payload,
+            user=booking.user,
+            booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
         )
         await self.notification_service.notify_client(
-            booking_event_payload=booking_event_payload,
+            booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
         )
-        await self.meeting_service.delete_meeting(booking_event_payload=booking_event_payload)
-        await self.meeting_service.delete_meeting(
-            booking_event_payload=booking_event_payload,
-            external_id_prefix=self.client_meeting_prefix,
-        )
+        await self.meeting_service.delete_meeting(booking=booking)
+        await self.meeting_service.delete_meeting(booking=booking, external_id_prefix=self.client_meeting_prefix)
 
     async def _background_processing(self, booking_event: BookingEventDTO) -> None:
         logger.info("Processing booking event", uid=booking_event.payload.uid, type=booking_event.trigger_event)
