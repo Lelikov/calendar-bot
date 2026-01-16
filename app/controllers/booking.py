@@ -132,11 +132,12 @@ class BookingController:
         self.background_tasks.add(task)
         task.add_done_callback(self.background_tasks.discard)
 
-    async def handle_booking_reminder(self) -> None:
+    async def handle_booking_reminder(self) -> int:
         bookings = await self.db.get_bookings(
             start_time_from=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=23),
             start_time_to=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=24),
         )
+        count_sent_reminders = 0
         for booking in bookings:
             if booking.uid in self.reminder_sent:
                 continue
@@ -150,4 +151,5 @@ class BookingController:
                 meeting_url=meeting_url,
                 trigger_event=TriggerEvent.BOOKING_REMINDER,
             )
-        return None
+            count_sent_reminders += 1
+        return count_sent_reminders
