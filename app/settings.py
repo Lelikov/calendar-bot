@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     telegram_my_token: str
     webhook_path: str = "/telegram"
     admin_chat_ids: list[int] = Field(default_factory=list)
+    admin_api_token: str = Field(strict=True)
 
     class Config:
         env_file = ".env"

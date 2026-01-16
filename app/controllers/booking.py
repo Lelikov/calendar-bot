@@ -1,3 +1,4 @@
+import datetime
 from asyncio import Task, create_task
 
 import structlog
@@ -5,7 +6,7 @@ from aiogram import Bot
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
-from app.dtos import BookingEventDTO, TriggerEvent
+from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
 
@@ -20,17 +21,22 @@ class BookingController:
         self.notification_service = NotificationService(db, bot)
         self.background_tasks: set[Task] = set()
         self.client_meeting_prefix = "client_"
+        self.reminder_sent: set[str] = set()
 
     async def _process_booking_flow(
         self,
         booking_event: BookingEventDTO,
         is_update_url_data: bool = False,
     ) -> None:
-        booking = await self.db.get_booking(booking_event.payload.uid)
+        booking: BookingDTO = await self.db.get_booking(booking_event.payload.uid)
+        if not booking:
+            logger.warning("Booking not found", uid=booking_event.payload.uid)
+            return None
+
         if booking.from_reschedule:
             booking.previous_booking = await self.db.get_booking(booking.from_reschedule)
 
-        organizer_meeting_url = await self.meeting_service.setup_meeting(
+        organizer_meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
             participant_name=booking.user.name,
             is_update_url_data=is_update_url_data,
@@ -43,7 +49,7 @@ class BookingController:
             meeting_url=organizer_meeting_url,
         )
 
-        client_meeting_url = await self.meeting_service.setup_meeting(
+        client_meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
             participant_name=booking.client.name,
             is_update_url_data=is_update_url_data,
@@ -73,7 +79,7 @@ class BookingController:
             meeting_url=None,
         )
 
-        meeting_url = await self.meeting_service.setup_meeting(
+        meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
             participant_name=booking.user.name,
             is_update_url_data=True,
@@ -101,8 +107,8 @@ class BookingController:
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
         )
-        await self.meeting_service.delete_meeting(booking=booking)
-        await self.meeting_service.delete_meeting(booking=booking, external_id_prefix=self.client_meeting_prefix)
+        await self.meeting_service.delete_meeting_url(booking=booking)
+        await self.meeting_service.delete_meeting_url(booking=booking, external_id_prefix=self.client_meeting_prefix)
 
     async def _background_processing(self, booking_event: BookingEventDTO) -> None:
         logger.info("Processing booking event", uid=booking_event.payload.uid, type=booking_event.trigger_event)
@@ -125,3 +131,23 @@ class BookingController:
         task = create_task(self._background_processing(booking_event))
         self.background_tasks.add(task)
         task.add_done_callback(self.background_tasks.discard)
+
+    async def handle_booking_reminder(self) -> None:
+        bookings = await self.db.get_bookings(
+            start_time_from=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=23),
+            start_time_to=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=24),
+        )
+        for booking in bookings:
+            if booking.uid in self.reminder_sent:
+                continue
+            self.reminder_sent.add(booking.uid)
+            meeting_url = await self.meeting_service.get_meeting_url(
+                booking=booking,
+                external_id_prefix=self.client_meeting_prefix,
+            )
+            await self.notification_service.notify_client(
+                booking=booking,
+                meeting_url=meeting_url,
+                trigger_event=TriggerEvent.BOOKING_REMINDER,
+            )
+        return None

@@ -34,6 +34,22 @@ class UrlShortenerAdapter:
                 logger.exception("Failed to shorten URL")
         return None
 
+    async def get_url(self, external_id: str) -> str | None:
+        if not self._check_api_key():
+            return None
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    f"{self.BASE_URL}/api/v1/urls/external/{external_id}",
+                    headers={"Content-Type": "application/json", "api-key": cfg.shortify_api_key},
+                )
+                response.raise_for_status()
+                data = response.json()
+                if ident := data.get("ident"):
+                    return f"{self.BASE_URL}/{ident}"
+            except Exception:
+                logger.exception("Failed to get shorten URL data")
+
     async def update_url_data(
         self,
         long_url: str,

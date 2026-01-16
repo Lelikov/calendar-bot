@@ -24,7 +24,7 @@ class MeetingService:
         self.shortener = shortener
         self.timeshift = 5 * 60
 
-    async def setup_meeting(
+    async def create_meeting_url(
         self,
         *,
         booking: BookingDTO,
@@ -48,7 +48,10 @@ class MeetingService:
             await self.db.update_booking_video_url(booking.uid, meeting_url)
         return meeting_url
 
-    async def delete_meeting(
+    async def get_meeting_url(self, booking: BookingDTO, external_id_prefix: str = "") -> str | None:
+        return await self.shortener.get_url(external_id=f"{external_id_prefix}{booking.uid}")
+
+    async def delete_meeting_url(
         self,
         *,
         booking: BookingDTO,

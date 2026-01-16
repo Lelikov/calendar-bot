@@ -1,6 +1,8 @@
+import datetime
 from datetime import UTC
 
 from databases import Database
+from databases.interfaces import Record
 
 from app.dtos import BookingClientDTO, BookingDTO, UserDTO
 
@@ -70,70 +72,9 @@ class BookingDatabaseAdapter:
                 LEFT JOIN "Attendee" a ON a."bookingId" = b.id
                 WHERE b.uid = :booking_uid
             """
-            row = await database.fetch_one(
-                query=query,
-                values={"booking_uid": booking_uid},
-            )
+            row = await database.fetch_one(query=query, values={"booking_uid": booking_uid})
             if row:
-                user = UserDTO(
-                    id=row["user_id_val"],
-                    name=row["user_name"],
-                    email=row["user_email"],
-                    locked=row["user_locked"],
-                    time_zone=row["user_time_zone"],
-                    telegram_chat_id=row["user_telegram_chat_id"],
-                    telegram_token=row["user_telegram_token"],
-                )
-
-                client = BookingClientDTO(
-                    name=row["client_name"],
-                    email=row["client_email"],
-                    time_zone=row["client_time_zone"],
-                )
-
-                return BookingDTO(
-                    id=row["id"],
-                    uid=row["uid"],
-                    user_id=row["userId"],
-                    event_type_id=row["eventTypeId"],
-                    title=row["title"],
-                    description=row["description"],
-                    start_time=row["startTime"].replace(tzinfo=UTC),
-                    end_time=row["endTime"].replace(tzinfo=UTC),
-                    created_at=row["createdAt"],
-                    updated_at=row["updatedAt"],
-                    location=row["location"],
-                    paid=row["paid"],
-                    status=row["status"],
-                    cancellation_reason=row["cancellationReason"],
-                    rejection_reason=row["rejectionReason"],
-                    from_reschedule=row["fromReschedule"],
-                    rescheduled=row["rescheduled"],
-                    dynamic_event_slug_ref=row["dynamicEventSlugRef"],
-                    dynamic_group_slug_ref=row["dynamicGroupSlugRef"],
-                    recurring_event_id=row["recurringEventId"],
-                    custom_inputs=row["customInputs"],
-                    sms_reminder_number=row["smsReminderNumber"],
-                    destination_calendar_id=row["destinationCalendarId"],
-                    scheduled_jobs=row["scheduledJobs"],
-                    metadata=row["metadata"],
-                    responses=row["responses"],
-                    is_recorded=row["isRecorded"],
-                    ical_sequence=row["iCalSequence"],
-                    ical_uid=row["iCalUID"],
-                    user_primary_email=row["userPrimaryEmail"],
-                    idempotency_key=row["idempotencyKey"],
-                    no_show_host=row["noShowHost"],
-                    rating=row["rating"],
-                    rating_feedback=row["ratingFeedback"],
-                    cancelled_by=row["cancelledBy"],
-                    rescheduled_by=row["rescheduledBy"],
-                    one_time_password=row["oneTimePassword"],
-                    reassign_reason=row["reassignReason"],
-                    reassign_by_id=row["reassignById"],
-                    user=user,
-                    client=client,
-                )
+                return self._fill_booking_dto(row)
             return None
 
     async def update_booking_video_url(self, booking_uid: str, url: str) -> None:
@@ -145,3 +86,96 @@ class BookingDatabaseAdapter:
                 WHERE uid = :booking_uid
                     """
             await database.execute(query=query, values={"booking_uid": booking_uid, "url": url})
+
+    async def get_bookings(
+        self,
+        start_time_from: datetime.datetime,
+        start_time_to: datetime.datetime,
+    ) -> list[BookingDTO]:
+        async with Database(self.dsn) as database:
+            query = """
+                SELECT
+                    b.*,
+                    u.id as user_id_val, u.name as user_name, u.email as user_email, u.locked as user_locked,
+                    u."timeZone" as user_time_zone, u.telegram_chat_id as user_telegram_chat_id,
+                    u.telegram_token as user_telegram_token,
+                    a.name as client_name, a.email as client_email, a."timeZone" as client_time_zone
+                FROM public."Booking" b
+                LEFT JOIN users u ON b."userId" = u.id
+                LEFT JOIN "Attendee" a ON a."bookingId" = b.id
+                WHERE b.status = 'accepted'
+                    AND b."startTime" BETWEEN
+                :start_time_from
+                AND
+                :start_time_to
+            """
+            rows = await database.fetch_all(
+                query=query,
+                values={
+                    "start_time_from": start_time_from.astimezone(UTC).replace(tzinfo=None),
+                    "start_time_to": start_time_to.astimezone(UTC).replace(tzinfo=None),
+                },
+            )
+        return [self._fill_booking_dto(row) for row in rows]
+
+    @staticmethod
+    def _fill_booking_dto(row: Record) -> BookingDTO:
+        user = UserDTO(
+            id=row["user_id_val"],
+            name=row["user_name"],
+            email=row["user_email"],
+            locked=row["user_locked"],
+            time_zone=row["user_time_zone"],
+            telegram_chat_id=row["user_telegram_chat_id"],
+            telegram_token=row["user_telegram_token"],
+        )
+
+        client = BookingClientDTO(
+            name=row["client_name"],
+            email=row["client_email"],
+            time_zone=row["client_time_zone"],
+        )
+
+        return BookingDTO(
+            id=row["id"],
+            uid=row["uid"],
+            user_id=row["userId"],
+            event_type_id=row["eventTypeId"],
+            title=row["title"],
+            description=row["description"],
+            start_time=row["startTime"].replace(tzinfo=UTC),
+            end_time=row["endTime"].replace(tzinfo=UTC),
+            created_at=row["createdAt"],
+            updated_at=row["updatedAt"],
+            location=row["location"],
+            paid=row["paid"],
+            status=row["status"],
+            cancellation_reason=row["cancellationReason"],
+            rejection_reason=row["rejectionReason"],
+            from_reschedule=row["fromReschedule"],
+            rescheduled=row["rescheduled"],
+            dynamic_event_slug_ref=row["dynamicEventSlugRef"],
+            dynamic_group_slug_ref=row["dynamicGroupSlugRef"],
+            recurring_event_id=row["recurringEventId"],
+            custom_inputs=row["customInputs"],
+            sms_reminder_number=row["smsReminderNumber"],
+            destination_calendar_id=row["destinationCalendarId"],
+            scheduled_jobs=row["scheduledJobs"],
+            metadata=row["metadata"],
+            responses=row["responses"],
+            is_recorded=row["isRecorded"],
+            ical_sequence=row["iCalSequence"],
+            ical_uid=row["iCalUID"],
+            user_primary_email=row["userPrimaryEmail"],
+            idempotency_key=row["idempotencyKey"],
+            no_show_host=row["noShowHost"],
+            rating=row["rating"],
+            rating_feedback=row["ratingFeedback"],
+            cancelled_by=row["cancelledBy"],
+            rescheduled_by=row["rescheduledBy"],
+            one_time_password=row["oneTimePassword"],
+            reassign_reason=row["reassignReason"],
+            reassign_by_id=row["reassignById"],
+            user=user,
+            client=client,
+        )
