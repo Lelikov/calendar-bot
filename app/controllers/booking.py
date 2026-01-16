@@ -1,4 +1,5 @@
 import datetime
+import json
 from asyncio import Task, create_task
 
 import structlog
@@ -142,10 +143,13 @@ class BookingController:
             if booking.uid in self.reminder_sent:
                 continue
             self.reminder_sent.add(booking.uid)
-            meeting_url = await self.meeting_service.get_meeting_url(
-                booking=booking,
-                external_id_prefix=self.client_meeting_prefix,
-            )
+            if "cloud" in booking.metadata:
+                meeting_url = json.loads(booking.metadata).get("videoCallUrl")
+            else:
+                meeting_url = await self.meeting_service.get_meeting_url(
+                    booking=booking,
+                    external_id_prefix=self.client_meeting_prefix,
+                )
             await self.notification_service.notify_client(
                 booking=booking,
                 meeting_url=meeting_url,
