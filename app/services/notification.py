@@ -47,7 +47,7 @@ class NotificationService:
             autoescape=select_autoescape(),
         )
         self.email_service = EmailService(from_email=cfg.from_email, from_email_name=cfg.from_email_name)
-        self.timeshift = 5 * 60
+        self.timeshift = 10 * 60
 
     @staticmethod
     def get_time_zone_city(*, time_zone: str) -> str:
