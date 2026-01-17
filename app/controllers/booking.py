@@ -71,14 +71,13 @@ class BookingController:
 
     async def _handle_reassigned(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
-        previous_organizer = await self.db.get_user_by_id(user_id=booking.reassign_by_id)
-
-        await self.notification_service.notify_organizer(
-            user=previous_organizer,
-            booking=booking,
-            trigger_event=TriggerEvent.BOOKING_CANCELLED,
-            meeting_url=None,
-        )
+        if previous_organizer := await self.db.get_user_by_id(user_id=booking.reassign_by_id):
+            await self.notification_service.notify_organizer(
+                user=previous_organizer,
+                booking=booking,
+                trigger_event=TriggerEvent.BOOKING_CANCELLED,
+                meeting_url=None,
+            )
 
         meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
