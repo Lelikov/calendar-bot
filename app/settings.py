@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     from_email_name: str
     email_api_url: str
     email_api_key: str = Field(strict=True)
+    smtp_host: str | None = Field(strict=True, default=None)
+    smtp_port: int | None = Field(strict=True, default=2525)
+    smtp_user: str | None = Field(strict=True, default=None)
+    smtp_password: str | None = Field(strict=True, default=None)
     support_email: str = "info@localhost.local"
     telegram_my_token: str
     webhook_path: str = "/telegram"

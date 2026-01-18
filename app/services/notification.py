@@ -188,8 +188,8 @@ class NotificationService:
         try:
             template = self.jinja_env.get_template(template_name)
             html_content = template.render(**context)
-            await self.email_service.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
             logger.info(f"Sending email to {role}", email=recipient_email, trigger_event=trigger_event)
+            await self.email_service.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
         except Exception:
             logger.exception(f"Error sending email to {role}")
 
