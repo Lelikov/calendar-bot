@@ -117,6 +117,8 @@ class EmailService:
             "icloud.com": SMTPClient,
             "zohomail.eu": SMTPClient,
             "hotmail.com": SMTPClient,
+            "hotmail.fr": SMTPClient,
+            "outlook.com": SMTPClient,
             "default": PostalEmailClient,
         }
 
