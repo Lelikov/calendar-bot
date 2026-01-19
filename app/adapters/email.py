@@ -116,6 +116,7 @@ class EmailService:
         self.email_client_selector: dict[str, type[IEmailClient]] = {
             "icloud.com": SMTPClient,
             "zohomail.eu": SMTPClient,
+            "hotmail.com": SMTPClient,
             "default": PostalEmailClient,
         }
 
