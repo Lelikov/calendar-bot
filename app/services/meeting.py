@@ -7,6 +7,7 @@ import structlog
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
+from app.controllers.chat import ChatController
 from app.dtos import BookingDTO
 from app.settings import get_settings
 
@@ -19,27 +20,40 @@ METADATA_WAIT_DELAY = 5
 
 
 class MeetingService:
-    def __init__(self, db: BookingDatabaseAdapter, shortener: UrlShortenerAdapter) -> None:
+    def __init__(
+        self,
+        db: BookingDatabaseAdapter,
+        shortener: UrlShortenerAdapter,
+        chat_controller: ChatController,
+    ) -> None:
         self.db = db
         self.shortener = shortener
+        self.chat_controller = chat_controller
         self.timeshift = 5 * 60
 
     async def create_meeting_url(
         self,
         *,
         booking: BookingDTO,
+        participant_id: str,
         participant_name: str,
         is_update_url_data: bool = False,
         is_update_url_in_db: bool = False,
         external_id_prefix: str = "",
     ) -> str:
-        participant_token = self._create_jitsi_token(
+        participant_video_token = self._create_jitsi_token(
             booking=booking,
             participant_name=participant_name,
         )
+        participant_chat_token = self.chat_controller.create_token(
+            user_id=participant_id,
+            name=participant_name,
+            expires_at=int(self._get_meeting_expiration(booking.end_time)),
+        )
         meeting_url = await self._generate_url(
             booking=booking,
-            participant_token=participant_token,
+            participant_video_token=participant_video_token,
+            participant_chat_token=participant_chat_token,
             is_update_url_data=is_update_url_data,
             external_id_prefix=external_id_prefix,
         )
@@ -79,11 +93,15 @@ class MeetingService:
         self,
         *,
         booking: BookingDTO,
-        participant_token: str,
+        participant_video_token: str,
+        participant_chat_token: str,
         is_update_url_data: bool = False,
         external_id_prefix: str = "",
     ) -> str:
-        long_url = f"{cfg.meeting_host_url}/{booking.uid}?jwt={participant_token}"
+        long_url = (
+            f"{cfg.meeting_host_url}/{booking.uid}"
+            f"?jwt_video={participant_video_token}&jwt_chat={participant_chat_token}"
+        )
         try:
             expires_at = self._get_meeting_expiration(booking.end_time)
             if is_update_url_data:

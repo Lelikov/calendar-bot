@@ -6,19 +6,29 @@ import structlog
 from aiogram import Bot
 
 from app.adapters.db import BookingDatabaseAdapter
+from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
+from app.controllers.chat import ChatController
 from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
+from app.settings import get_settings
 
 
 logger = structlog.get_logger(__name__)
+cfg = get_settings()
 
 
 class BookingController:
     def __init__(self, db: BookingDatabaseAdapter, shortener: UrlShortenerAdapter, bot: Bot) -> None:
         self.db = db
-        self.meeting_service = MeetingService(db, shortener)
+        self.chat_adapter = GetStreamAdapter(
+            chat_api_key=cfg.chat_api_key,
+            chat_api_secret=cfg.chat_api_secret,
+            user_id_encryption_key=cfg.chat_user_id_encryption_key,
+        )
+        self.chat_controller = ChatController(client=self.chat_adapter)
+        self.meeting_service = MeetingService(db=db, shortener=shortener, chat_controller=self.chat_controller)
         self.notification_service = NotificationService(db, bot)
         self.background_tasks: set[Task] = set()
         self.client_meeting_prefix = "client_"
@@ -34,11 +44,25 @@ class BookingController:
             logger.warning("Booking not found", uid=booking_event.payload.uid)
             return None
 
+        try:
+            await self.chat_controller.create_chat(
+                channel_id=booking.uid,
+                organizer_id=booking.user.email,
+                client_id=booking.client.email,
+            )
+        except Exception:
+            logger.exception("Error while creating chat", uid=booking_event.payload.uid)
+
         if booking.from_reschedule:
             booking.previous_booking = await self.db.get_booking(booking.from_reschedule)
+            try:
+                await self.chat_controller.delete_chat(channel_id=booking.previous_booking.uid)
+            except Exception:
+                logger.exception("Error while deleting chat for previous booking", uid=booking.uid)
 
         organizer_meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
+            participant_id=booking.user.email,
             participant_name=booking.user.name,
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=True,
@@ -52,6 +76,7 @@ class BookingController:
 
         client_meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
+            participant_id=booking.client.email,
             participant_name=booking.client.name,
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=False,
@@ -62,6 +87,7 @@ class BookingController:
             trigger_event=booking_event.trigger_event,
             meeting_url=client_meeting_url,
         )
+        return None
 
     async def _handle_created(self, booking_event: BookingEventDTO) -> None:
         await self._process_booking_flow(booking_event=booking_event, is_update_url_data=False)
@@ -78,14 +104,26 @@ class BookingController:
                 trigger_event=TriggerEvent.BOOKING_CANCELLED,
                 meeting_url=None,
             )
+        try:
+            await self.chat_controller.delete_chat(channel_id=booking.uid)
+            await self.chat_controller.create_chat(
+                channel_id=booking.uid,
+                organizer_id=booking.user.email,
+                client_id=booking.client.email,
+            )
+        except Exception:
+            logger.exception("Error while deleting chat for booking", uid=booking.uid)
+
+        if booking.from_reschedule:
+            booking.from_reschedule = None
 
         meeting_url = await self.meeting_service.create_meeting_url(
             booking=booking,
+            participant_id=booking.user.email,
             participant_name=booking.user.name,
             is_update_url_data=True,
             is_update_url_in_db=True,
         )
-
         await self.notification_service.notify_organizer(
             user=booking.user,
             booking=booking,
@@ -107,6 +145,10 @@ class BookingController:
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
         )
+        try:
+            await self.chat_controller.delete_chat(channel_id=booking.uid)
+        except Exception:
+            logger.exception("Error while deleting chat for booking", uid=booking.uid)
         await self.meeting_service.delete_meeting_url(booking=booking)
         await self.meeting_service.delete_meeting_url(booking=booking, external_id_prefix=self.client_meeting_prefix)
 
