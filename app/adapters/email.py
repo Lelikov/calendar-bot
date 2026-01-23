@@ -114,6 +114,7 @@ class EmailService:
         self.from_email_name = from_email_name
 
         self.email_client_selector: dict[str, type[IEmailClient]] = {
+            "gmail.com": SMTPClient,
             "icloud.com": SMTPClient,
             "zohomail.eu": SMTPClient,
             "hotmail.com": SMTPClient,
