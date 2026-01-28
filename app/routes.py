@@ -47,12 +47,14 @@ def get_mail_controller() -> MailController:
 
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
-    body: BookingReminderBody,
     booking_controller: Annotated[BookingController, Depends(get_booking_controller)],
+    body: BookingReminderBody | None = None,
     admin_api_token: Annotated[str | None, Header(alias="admin-api-token")] = None,
 ) -> int:
     if admin_api_token != cfg.admin_api_token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    if not body:
+        body = BookingReminderBody()
     count_sent_reminders = await booking_controller.handle_booking_reminder(
         start_time_from_shift=body.start_time_from_shift,
         start_time_to_shift=body.start_time_to_shift,

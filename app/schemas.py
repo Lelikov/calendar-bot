@@ -20,8 +20,8 @@ class BaseCalComModel(BaseModel):
 
 
 class BookingReminderBody(BaseModel):
-    start_time_from_shift: int = 23
-    start_time_to_shift: int = 24
+    start_time_from_shift: int = Field(default=23)
+    start_time_to_shift: int = Field(default=24)
 
 
 class BookingEventAttendee(BaseCalComModel):
