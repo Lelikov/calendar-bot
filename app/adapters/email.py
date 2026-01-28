@@ -18,7 +18,7 @@ class IEmailClient(Protocol):
         self,
         to_email: str,
         from_email: str,
-        from_email_name: str,
+        from_email_name: str | None,
         subject: str,
         html_content: str,
     ) -> None: ...
@@ -34,7 +34,7 @@ class PostalEmailClient:
         self,
         to_email: str,
         from_email: str,
-        from_email_name: str,
+        from_email_name: str | None,
         subject: str,
         html_content: str,
     ) -> None:
@@ -76,13 +76,13 @@ class SMTPClient:
         self,
         to_email: str,
         from_email: str,
-        from_email_name: str,
+        from_email_name: str | None,
         subject: str,
         html_content: str,
     ) -> None:
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
-        message["From"] = f"{from_email_name} <{from_email}>"
+        message["From"] = f"{from_email_name} <{from_email}>" if from_email_name else from_email
         message["To"] = to_email
 
         html_part = MIMEText(html_content, "html")
