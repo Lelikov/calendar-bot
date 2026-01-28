@@ -19,6 +19,11 @@ class BaseCalComModel(BaseModel):
         populate_by_name = True
 
 
+class BookingReminderBody(BaseModel):
+    start_time_from_shift: int = 23
+    start_time_to_shift: int = 24
+
+
 class BookingEventAttendee(BaseCalComModel):
     name: str
     email: str

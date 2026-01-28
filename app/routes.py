@@ -12,7 +12,7 @@ from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import bot, dp
 from app.controllers.booking import BookingController
 from app.controllers.mail import MailController
-from app.schemas import BookingEvent, MailWebhookEvent
+from app.schemas import BookingEvent, BookingReminderBody, MailWebhookEvent
 from app.settings import get_settings
 
 
@@ -47,12 +47,16 @@ def get_mail_controller() -> MailController:
 
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
+    body: BookingReminderBody,
     booking_controller: Annotated[BookingController, Depends(get_booking_controller)],
     admin_api_token: Annotated[str | None, Header(alias="admin-api-token")] = None,
 ) -> int:
     if admin_api_token != cfg.admin_api_token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    count_sent_reminders = await booking_controller.handle_booking_reminder()
+    count_sent_reminders = await booking_controller.handle_booking_reminder(
+        start_time_from_shift=body.start_time_from_shift,
+        start_time_to_shift=body.start_time_to_shift,
+    )
     logger.info(f"Sent {count_sent_reminders} reminders")
     return count_sent_reminders
 

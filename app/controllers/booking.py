@@ -174,10 +174,10 @@ class BookingController:
         self.background_tasks.add(task)
         task.add_done_callback(self.background_tasks.discard)
 
-    async def handle_booking_reminder(self) -> int:
+    async def handle_booking_reminder(self, start_time_from_shift: int, start_time_to_shift: int) -> int:
         bookings = await self.db.get_bookings(
-            start_time_from=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=23),
-            start_time_to=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=24),
+            start_time_from=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=start_time_from_shift),
+            start_time_to=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=start_time_to_shift),
         )
         count_sent_reminders = 0
         for booking in bookings:
