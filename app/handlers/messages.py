@@ -1,5 +1,8 @@
 import binascii
+import time
+import uuid
 
+import jwt
 import structlog
 from aiogram import F, types
 from aiogram.filters import Command, CommandObject, CommandStart
@@ -8,7 +11,10 @@ from aiogram.utils.markdown import hbold
 from aiogram.utils.payload import decode_payload
 from databases import Database
 
+from app.adapters.get_stream import GetStreamAdapter
+from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import telegram_router
+from app.controllers.chat import ChatController
 from app.settings import get_settings
 
 
@@ -57,3 +63,90 @@ async def hello(message: types.Message) -> None:
     except Exception:
         logger.exception("Can't send message")
         await message.answer("Nice try!")
+
+
+@telegram_router.message(Command("meeting_test"))
+async def meeting_test(message: types.Message, command: CommandObject) -> None:
+    args = (command.args or "").split(",")
+    if not args or len(args) != 2:
+        await message.answer("Введите имя и почту второго участника через запятую")
+        return None
+    client_email = next((x for x in args if "@" in x), "").strip()
+    client_name = next((x for x in args if x is not client_email), "").strip()
+    if not client_email:
+        await message.answer(f"Почта второго участника {client_email} указана неправильно")
+        return None
+
+    async with Database(cfg.postgres_dsn) as database:
+        query = "SELECT name, email FROM users WHERE locked = FALSE AND telegram_chat_id = :telegram_chat_id "
+        row = await database.fetch_one(query=query, values={"telegram_chat_id": message.from_user.id})
+
+    if not row:
+        return None
+
+    organizer_name = row["name"]
+    organizer_email = row["email"]
+
+    meeting_uid = str(uuid.uuid4())
+    start_time = int(time.time())
+    end_time = start_time + 60 * 60
+
+    def create_jitsi_token(participant_name: str) -> str:
+        payload = {
+            "aud": cfg.meeting_jwt_aud,
+            "iss": cfg.meeting_jwt_iss,
+            "sub": "*",
+            "room": meeting_uid,
+            "iat": start_time,
+            "exp": end_time,
+            "context": {"user": {"name": participant_name}},
+        }
+        return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
+
+    client_video_token = create_jitsi_token(client_name)
+    organizer_video_token = create_jitsi_token(organizer_name)
+
+    chat_adapter = GetStreamAdapter(
+        chat_api_key=cfg.chat_api_key,
+        chat_api_secret=cfg.chat_api_secret,
+        user_id_encryption_key=cfg.chat_user_id_encryption_key,
+    )
+    chat_controller = ChatController(client=chat_adapter)
+
+    await chat_controller.create_chat(
+        channel_id=meeting_uid,
+        organizer_id=organizer_email,
+        client_id=client_email,
+    )
+
+    client_chat_token = chat_controller.create_token(
+        user_id=client_email,
+        name=client_name,
+        expires_at=end_time,
+    )
+    organizer_chat_token = chat_controller.create_token(
+        user_id=organizer_email,
+        name=organizer_name,
+        expires_at=end_time,
+    )
+
+    client_long_url = (
+        f"{cfg.meeting_host_url}/{meeting_uid}?jwt_video={client_video_token}&jwt_chat={client_chat_token}"
+    )
+    organizer_long_url = (
+        f"{cfg.meeting_host_url}/{meeting_uid}?jwt_video={organizer_video_token}&jwt_chat={organizer_chat_token}"
+    )
+    shortner = UrlShortenerAdapter()
+    client_short_url = await shortner.create_url(
+        external_id=f"client_{meeting_uid}",
+        long_url=client_long_url,
+        expires_at=end_time,
+    )
+    organizer_short_url = await shortner.create_url(
+        external_id=f"{meeting_uid}",
+        long_url=organizer_long_url,
+        expires_at=end_time,
+    )
+
+    await message.answer(f"Ваша ссылка для подключения {organizer_short_url}\nСсылка для клиента {client_short_url}")
+    return None
