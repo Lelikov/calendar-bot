@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, TypedDict
 
 
@@ -15,6 +15,7 @@ class TriggerEvent(StrEnum):
     BOOKING_PAYMENT_INITIATED = "BOOKING_PAYMENT_INITIATED"
     BOOKING_REMINDER = "BOOKING_REMINDER"
     PING = "PING"
+    MEET_CLIENT_JOINED = "MEET_CLIENT_JOINED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,3 +161,15 @@ class BookingDTO:
     user_primary_email: str | None = None
     user: UserDTO | None = None
     client: BookingClientDTO | None = None
+
+
+class MeetWebhookEventType(str, Enum):
+    HANDLE_API_READY = "handleApiReady"
+    VIDEO_CONFERENCE_JOINED = "videoConferenceJoined"
+    VIDEO_CONFERENCE_LEFT = "videoConferenceLeft"
+
+
+@dataclass(slots=True)
+class MeetWebhookEventDTO:
+    event: MeetWebhookEventType
+    jwt: str

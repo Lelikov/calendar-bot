@@ -44,6 +44,7 @@ class MeetingService:
         participant_video_token = self._create_jitsi_token(
             booking=booking,
             participant_name=participant_name,
+            external_id_prefix=external_id_prefix,
         )
         participant_chat_token = self.chat_controller.create_token(
             user_id=participant_id,
@@ -76,7 +77,7 @@ class MeetingService:
     def _get_meeting_expiration(self, end_time: datetime) -> float:
         return end_time.timestamp() + self.timeshift
 
-    def _create_jitsi_token(self, *, booking: BookingDTO, participant_name: str) -> str:
+    def _create_jitsi_token(self, *, booking: BookingDTO, participant_name: str, external_id_prefix: str) -> str:
         payload = {
             "aud": cfg.meeting_jwt_aud,
             "iss": cfg.meeting_jwt_iss,
@@ -85,7 +86,7 @@ class MeetingService:
             "iat": int(time.time()),
             "nbf": booking.start_time.timestamp() - self.timeshift,
             "exp": self._get_meeting_expiration(booking.end_time),
-            "context": {"user": {"name": participant_name}},
+            "context": {"user": {"name": participant_name, "role": "client" if external_id_prefix else "organizer"}},
         }
         return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
 

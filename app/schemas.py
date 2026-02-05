@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
 
@@ -9,6 +11,7 @@ from app.dtos import (
     MailWebhookEventDTO,
     MailWebhookMessageDTO,
     MailWebhookPayloadDTO,
+    MeetWebhookEventDTO,
     TriggerEvent,
 )
 
@@ -152,4 +155,19 @@ class MailWebhookEvent(BaseModel):
             payload=self.payload.to_dto(),
             timestamp=self.timestamp,
             uuid=self.uuid,
+        )
+
+
+class JitsiWebhookEvent(BaseModel):
+    event: Literal["handleApiReady", "videoConferenceJoined", "videoConferenceLeft"]
+    jwt: str
+    payload: dict
+
+    class Config:
+        alias_generator = to_camel
+
+    def to_dto(self) -> MeetWebhookEventDTO:
+        return MeetWebhookEventDTO(
+            event=self.event,
+            jwt=self.jwt,
         )

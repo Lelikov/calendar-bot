@@ -69,20 +69,18 @@ class NotificationService:
         duration_minutes = int((duration_seconds - self.timeshift) / 60)
         return f"{duration_minutes} мин"
 
-    def _get_notification_text(
+    def _get_telegram_notification_text(
         self,
         *,
+        booking: BookingDTO,
         time_zone: str,
-        start_time: datetime,
         meeting_url: str | None,
-        booking_uid: str,
         trigger_event: TriggerEvent,
-        previous_start_time: datetime | None = None,
     ) -> str | None:
-        organizer_time = self._get_participant_time(
-            participant_tz_str=time_zone,
-            start_time=start_time,
-        )
+        start_time = booking.start_time
+        booking_uid = booking.uid
+        previous_start_time = booking.previous_booking.start_time if booking.previous_booking else None
+        organizer_time = self._get_participant_time(participant_tz_str=time_zone, start_time=start_time)
 
         messages = {}
 
@@ -113,6 +111,17 @@ class NotificationService:
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
 👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
+        if trigger_event == TriggerEvent.MEET_CLIENT_JOINED:
+            messages[TriggerEvent.MEET_CLIENT_JOINED] = f"""🏃<b>Клиент зашел на встречу</b>
+
+📅 <b>Время начала:</b> {organizer_time}
+🔗 <a href="{meeting_url}">Ссылка на встречу</a>
+👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>
+
+⚠️ Если после этого сообщения вы не видите клиента, обновите, пожалуйста,
+страницу встречи в браузере и подключитесь снова ⚠️
+"""
+
         return messages.get(trigger_event)
 
     async def notify_organizer_telegram(
@@ -127,13 +136,11 @@ class NotificationService:
             logger.warning("Organizer chat ID not found", email=user.email)
             return
 
-        notification_text = self._get_notification_text(
+        notification_text = self._get_telegram_notification_text(
+            booking=booking,
             time_zone=user.time_zone,
             meeting_url=meeting_url,
-            start_time=booking.start_time,
-            booking_uid=booking.uid,
             trigger_event=trigger_event,
-            previous_start_time=booking.previous_booking.start_time if booking.previous_booking else None,
         )
 
         if notification_text:

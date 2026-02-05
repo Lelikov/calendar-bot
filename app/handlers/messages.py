@@ -91,7 +91,7 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
     start_time = int(time.time())
     end_time = start_time + 60 * 60
 
-    def create_jitsi_token(participant_name: str) -> str:
+    def create_jitsi_token(participant_name: str, role: str) -> str:
         payload = {
             "aud": cfg.meeting_jwt_aud,
             "iss": cfg.meeting_jwt_iss,
@@ -99,12 +99,12 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
             "room": meeting_uid,
             "iat": start_time,
             "exp": end_time,
-            "context": {"user": {"name": participant_name}},
+            "context": {"user": {"name": participant_name, "role": role}},
         }
         return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
 
-    client_video_token = create_jitsi_token(client_name)
-    organizer_video_token = create_jitsi_token(organizer_name)
+    client_video_token = create_jitsi_token(client_name, role="client")
+    organizer_video_token = create_jitsi_token(organizer_name, role="organizer")
 
     chat_adapter = GetStreamAdapter(
         chat_api_key=cfg.chat_api_key,

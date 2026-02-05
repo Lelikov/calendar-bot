@@ -2,6 +2,7 @@ import hashlib
 import hmac
 from typing import Annotated
 
+import jwt
 import structlog
 from aiogram import types
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -12,7 +13,8 @@ from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import bot, dp
 from app.controllers.booking import BookingController
 from app.controllers.mail import MailController
-from app.schemas import BookingEvent, BookingReminderBody, MailWebhookEvent
+from app.controllers.meet import MeetController
+from app.schemas import BookingEvent, BookingReminderBody, JitsiWebhookEvent, MailWebhookEvent
 from app.settings import get_settings
 
 
@@ -39,6 +41,10 @@ def get_booking_controller() -> BookingController:
         shortener=UrlShortenerAdapter(),
         bot=bot,
     )
+
+
+def get_meet_controller() -> MeetController:
+    return MeetController(db=BookingDatabaseAdapter(cfg.postgres_dsn))
 
 
 def get_mail_controller() -> MailController:
@@ -98,4 +104,25 @@ async def bot_webhook(
         return {"status": "error", "message": "Wrong secret token !"}
     telegram_update = types.Update(**update)
     await dp.feed_webhook_update(bot=bot, update=telegram_update)
+    return None
+
+
+@root_router.post("/jitsi/webhook")
+async def jitsi_webhook(
+    event: JitsiWebhookEvent,
+    meet_controller: Annotated[MeetController, Depends(get_meet_controller)],
+) -> None:
+    try:
+        jwt.decode(
+            event.jwt,
+            cfg.jitsi_jwt_token,
+            algorithms=["HS256"],
+            audience=cfg.meeting_jwt_aud,
+            issuer=cfg.meeting_jwt_iss,
+        )
+    except jwt.PyJWTError as e:
+        logger.exception("Jitsi webhook JWT validation error")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="JWT validation error") from e
+
+    await meet_controller.handle_webhook(event.to_dto())
     return None
