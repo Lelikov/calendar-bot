@@ -9,6 +9,7 @@ class SendMessageRequest(BaseModel):
     to: list[str | EmailAddress] = Field(..., min_length=1)
     from_address: str | EmailAddress
     subject: str
+    reply_address: str | EmailAddress | None = None
     plain_body: str | None = None
     html_body: str | None = None
     cc: list[str | EmailAddress] | None = None

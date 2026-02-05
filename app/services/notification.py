@@ -35,7 +35,7 @@ class NotificationService:
             TriggerEvent.BOOKING_CREATED: ("client/confirmation.html", "✅Новая запись"),
             TriggerEvent.BOOKING_RESCHEDULED: ("client/reschedule.html", "↻Встреча перенесена"),
             TriggerEvent.BOOKING_CANCELLED: ("client/cancellation.html", "❌Ваша встреча отменена"),
-            TriggerEvent.BOOKING_REMINDER: ("client/reminder.html", "📝Напоминание о встречи с волонтером"),  # noqa: RUF001
+            TriggerEvent.BOOKING_REMINDER: ("client/reminder.html", "📝Напоминание о встречи с волонтером"),
         },
     }
 
@@ -46,7 +46,12 @@ class NotificationService:
             loader=FileSystemLoader("app/templates"),
             autoescape=select_autoescape(),
         )
-        self.email_service = EmailService(from_email=cfg.from_email, from_email_name=cfg.from_email_name)
+        self.email_service = EmailService(
+            from_email=cfg.from_email,
+            from_email_name=cfg.from_email_name,
+            reply_to_email=cfg.reply_to_email,
+            reply_to_email_name=cfg.reply_to_email_name,
+        )
         self.timeshift = 10 * 60
 
     @staticmethod

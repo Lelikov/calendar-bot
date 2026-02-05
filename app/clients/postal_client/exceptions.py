@@ -1,14 +1,22 @@
-class PostalError(Exception):
+from app.clients.exceptions import (
+    BaseAuthenticationError,
+    BaseClientError,
+    BaseRateLimitError,
+    BaseValidationError,
+)
+
+
+class PostalError(BaseClientError):
     pass
 
 
-class PostalAuthenticationError(PostalError):
+class PostalAuthenticationError(PostalError, BaseAuthenticationError):
     pass
 
 
-class PostalValidationError(PostalError):
+class PostalValidationError(PostalError, BaseValidationError):
     pass
 
 
-class PostalRateLimitError(PostalError):
+class PostalRateLimitError(PostalError, BaseRateLimitError):
     pass

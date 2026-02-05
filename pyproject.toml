@@ -30,6 +30,7 @@ dependencies = [
     "aiosmtplib>=5.0.0",
     "stream-chat>=4.29.0",
     "cryptography>=44.0.0",
+    "pymongo>=4.16.0",
 ]
 
 [dependency-groups]

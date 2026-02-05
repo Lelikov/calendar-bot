@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     shortner_url: str
     from_email: str
     from_email_name: str | None = None
+    reply_to_email: str | None = None
+    reply_to_email_name: str | None = None
     email_api_url: str
     email_api_key: str = Field(strict=True)
     smtp_host: str | None = Field(strict=True, default=None)
