@@ -15,11 +15,10 @@ from app.dtos import (
     TriggerEvent,
     UserDTO,
 )
-from app.settings import get_settings
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
-cfg = get_settings()
 
 TIME_FORMAT = "%d-%m-%Y, %H:%M"
 
@@ -39,18 +38,20 @@ class NotificationService:
         },
     }
 
-    def __init__(self, db: BookingDatabaseAdapter, bot: Bot) -> None:
+    def __init__(self, db: BookingDatabaseAdapter, bot: Bot, settings: Settings) -> None:
         self.db = db
         self.bot = bot
+        self.settings = settings
         self.jinja_env = Environment(
             loader=FileSystemLoader("app/templates"),
             autoescape=select_autoescape(),
         )
         self.email_service = EmailService(
-            from_email=cfg.from_email,
-            from_email_name=cfg.from_email_name,
-            reply_to_email=cfg.reply_to_email,
-            reply_to_email_name=cfg.reply_to_email_name,
+            from_email=settings.from_email,
+            from_email_name=settings.from_email_name,
+            reply_to_email=settings.reply_to_email,
+            reply_to_email_name=settings.reply_to_email_name,
+            settings=settings,
         )
         self.timeshift = 10 * 60
 
@@ -91,7 +92,7 @@ class NotificationService:
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
 
 🔗 <a href="{meeting_url}">Ссылка на встречу</a>
-👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
+👤 <a href="{self.settings.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
         if trigger_event == TriggerEvent.BOOKING_RESCHEDULED:
             previous_time = self._get_participant_time(participant_tz_str=time_zone, start_time=previous_start_time)
@@ -102,21 +103,21 @@ class NotificationService:
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
 
 🔗 <a href="{meeting_url}">Ссылка на встречу</a>
-👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
+👤 <a href="{self.settings.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
         if trigger_event == TriggerEvent.BOOKING_CANCELLED:
             messages[TriggerEvent.BOOKING_CANCELLED] = f"""❌ <b>Встреча отменена</b>
 
 📅 <b>Время начала:</b> {organizer_time}
 🌍 <b>Часовой пояс:</b> {self.get_time_zone_city(time_zone=time_zone)}
-👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
+👤 <a href="{self.settings.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>"""
 
         if trigger_event == TriggerEvent.MEET_CLIENT_JOINED:
             messages[TriggerEvent.MEET_CLIENT_JOINED] = f"""🏃<b>Клиент зашел на встречу</b>
 
 📅 <b>Время начала:</b> {organizer_time}
 🔗 <a href="{meeting_url}">Ссылка на встречу</a>
-👤 <a href="{cfg.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>
+👤 <a href="{self.settings.booking_host_url}/booking/{booking_uid}">Информация o клиенте</a>
 
 ⚠️ Если после этого сообщения вы не видите клиента, обновите страницу встречи в браузере и подключитесь снова ⚠️
 """
@@ -253,8 +254,8 @@ class NotificationService:
             meeting_url=meeting_url,
             additional_context={
                 "client_name": booking.client.name,
-                "cancel_link": f"{cfg.booking_host_url}/booking/{booking.uid}",
-                "support_email": cfg.support_email,
+                "cancel_link": f"{self.settings.booking_host_url}/booking/{booking.uid}",
+                "support_email": self.settings.support_email,
             },
         )
 

@@ -4,6 +4,7 @@ from logging import getLevelNamesMapping
 
 import sentry_sdk
 import structlog
+from databases import Database
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -12,7 +13,6 @@ from fastapi.responses import JSONResponse
 
 from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
-from app.database import database
 from app.di import container
 from app.routes import root_router
 from app.services.telegram import TelegramService
@@ -38,11 +38,11 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     logger.info("🚀 Starting application")
+    database = await container.get(Database)
     await database.connect()
     telegram_service = await container.get(TelegramService)
     await telegram_service.start()
     yield
-
     await database.disconnect()
     logger.info("⛔ Stopping application")
 
@@ -58,8 +58,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(root_router)
-
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -68,3 +66,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         content={"detail": exc.errors()},
     )
+
+
+app.include_router(root_router)

@@ -1,7 +1,7 @@
 from databases import Database
 
-from app.settings import get_settings
+from app.settings import Settings
 
 
-cfg = get_settings()
-database = Database(cfg.postgres_dsn)
+def create_database(settings: Settings) -> Database:
+    return Database(settings.postgres_dsn)

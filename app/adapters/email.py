@@ -14,11 +14,10 @@ from app.clients.unisender_go_client import (
     UnisenderGoClient,
     UnisenderGoError,
 )
-from app.settings import get_settings
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
-cfg = get_settings()
 
 
 class IEmailClient(Protocol):
@@ -170,11 +169,13 @@ class EmailService:
         from_email_name: str,
         reply_to_email: str,
         reply_to_email_name: str,
+        settings: Settings,
     ) -> None:
         self.from_email = from_email
         self.from_email_name = from_email_name
         self.reply_to_email = reply_to_email
         self.reply_to_email_name = reply_to_email_name
+        self.settings = settings
 
         self.email_client_selector: dict[str, type[IEmailClient]] = {
             "default": UnisenderGoEmailClient,
@@ -186,30 +187,37 @@ class EmailService:
         client_class = self.email_client_selector.get(domain, self.email_client_selector["default"])
 
         if client_class == SMTPClient:
-            if not all([cfg.smtp_host, cfg.smtp_port, cfg.smtp_user, cfg.smtp_password]):
+            if not all(
+                [
+                    self.settings.smtp_host,
+                    self.settings.smtp_port,
+                    self.settings.smtp_user,
+                    self.settings.smtp_password,
+                ],
+            ):
                 logger.warning(
                     f"SMTP credentials not configured, falling back to {client_class.__name__}",
                     domain=domain,
                     to_email=to_email,
                 )
                 return client_class(
-                    api_url=cfg.email_api_url,
-                    api_key=cfg.email_api_key,
+                    api_url=self.settings.email_api_url,
+                    api_key=self.settings.email_api_key,
                     max_retries=3,
                 )
 
             logger.debug("Using SMTP client", domain=domain, to_email=to_email)
             return SMTPClient(
-                host=cfg.smtp_host,
-                port=cfg.smtp_port,
-                username=cfg.smtp_user,
-                password=cfg.smtp_password,
+                host=self.settings.smtp_host,
+                port=self.settings.smtp_port,
+                username=self.settings.smtp_user,
+                password=self.settings.smtp_password,
             )
 
         logger.debug(f"Using {client_class.__name__} client", domain=domain, to_email=to_email)
         return client_class(
-            api_url=cfg.email_api_url,
-            api_key=cfg.email_api_key,
+            api_url=self.settings.email_api_url,
+            api_key=self.settings.email_api_key,
             max_retries=3,
         )
 

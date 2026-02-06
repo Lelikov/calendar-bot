@@ -12,42 +12,42 @@ from app.controllers.booking import BookingController
 from app.controllers.chat import ChatController
 from app.controllers.mail import MailController
 from app.controllers.meet import MeetController
-from app.database import database
-from app.redis_pool import pool
+from app.database import create_database
+from app.redis_pool import create_redis_pool
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
 from app.services.telegram import TelegramService
-from app.settings import Settings, get_settings
+from app.settings import Settings
 
 
 class AppProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_settings(self) -> Settings:
-        return get_settings()
+        return Settings()
 
     @provide(scope=Scope.APP)
     def provide_bot(self, settings: Settings) -> Bot:
         return Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     @provide(scope=Scope.APP)
-    def provide_database(self) -> Database:
-        return database
+    def provide_database(self, settings: Settings) -> Database:
+        return create_database(settings)
 
     @provide(scope=Scope.APP)
-    def provide_redis(self) -> Redis:
-        return Redis(connection_pool=pool)
+    def provide_redis(self, settings: Settings) -> Redis:
+        return Redis(connection_pool=create_redis_pool(settings))
 
     @provide(scope=Scope.APP)
     def provide_mail_controller(self, bot: Bot, settings: Settings) -> MailController:
         return MailController(bot=bot, settings=settings)
 
     @provide(scope=Scope.APP)
-    def provide_db(self) -> BookingDatabaseAdapter:
+    def provide_db(self, database: Database) -> BookingDatabaseAdapter:
         return BookingDatabaseAdapter(database)
 
     @provide(scope=Scope.APP)
-    def provide_shortener(self) -> UrlShortenerAdapter:
-        return UrlShortenerAdapter()
+    def provide_shortener(self, settings: Settings) -> UrlShortenerAdapter:
+        return UrlShortenerAdapter(settings=settings)
 
     @provide(scope=Scope.APP)
     def provide_chat_adapter(self, settings: Settings) -> GetStreamAdapter:
@@ -67,12 +67,18 @@ class AppProvider(Provider):
         db: BookingDatabaseAdapter,
         shortener: UrlShortenerAdapter,
         chat_controller: ChatController,
+        settings: Settings,
     ) -> MeetingService:
-        return MeetingService(db=db, shortener=shortener, chat_controller=chat_controller)
+        return MeetingService(db=db, shortener=shortener, chat_controller=chat_controller, settings=settings)
 
     @provide(scope=Scope.APP)
-    def provide_notification_service(self, db: BookingDatabaseAdapter, bot: Bot) -> NotificationService:
-        return NotificationService(db=db, bot=bot)
+    def provide_notification_service(
+        self,
+        db: BookingDatabaseAdapter,
+        bot: Bot,
+        settings: Settings,
+    ) -> NotificationService:
+        return NotificationService(db=db, bot=bot, settings=settings)
 
     @provide(scope=Scope.APP)
     def provide_telegram_service(self, bot: Bot, settings: Settings) -> TelegramService:

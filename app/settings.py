@@ -1,4 +1,3 @@
-from functools import lru_cache
 from typing import final
 
 from pydantic import Field
@@ -46,8 +45,3 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "ignore"
-
-
-@lru_cache  # get it from memory
-def get_settings() -> Settings:
-    return Settings()

@@ -14,13 +14,10 @@ from app.controllers.booking import BookingController
 from app.controllers.mail import MailController
 from app.controllers.meet import MeetController
 from app.schemas import BookingEvent, BookingReminderBody, JitsiWebhookEvent, MailWebhookEvent
-from app.settings import get_settings
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
-
-
-cfg = get_settings()
 
 root_router = APIRouter(
     prefix="",
@@ -32,16 +29,18 @@ root_router = APIRouter(
 
 async def validate_signature(signature: str, request: Request) -> bool:
     body = await request.body()
-    return signature == hmac.new(cfg.cal_signature.encode(), body, hashlib.sha256).hexdigest()
+    settings: Settings = request.app.state.dishka_container.get(Settings)
+    return signature == hmac.new(settings.cal_signature.encode(), body, hashlib.sha256).hexdigest()
 
 
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
     booking_controller: FromDishka[BookingController],
+    settings: FromDishka[Settings],
     body: BookingReminderBody | None = None,
     admin_api_token: Annotated[str | None, Header(alias="admin-api-token")] = None,
 ) -> int:
-    if admin_api_token != cfg.admin_api_token:
+    if admin_api_token != settings.admin_api_token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     if not body:
         body = BookingReminderBody()
@@ -58,9 +57,10 @@ async def booking(
     booking_event: BookingEvent,
     request: Request,
     signature: Annotated[str | None, Header(alias="x-cal-signature-256")],
+    settings: FromDishka[Settings],
     booking_controller: FromDishka[BookingController],
 ) -> None:
-    if not cfg.debug and not await validate_signature(signature=signature, request=request):
+    if not settings.debug and not await validate_signature(signature=signature, request=request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
     request_body = await request.json()
     logger.info(f"Received booking event {request_body}")
@@ -78,13 +78,14 @@ async def mail_webhook(
     return None
 
 
-@root_router.post(cfg.webhook_path)
+@root_router.post("/telegram")
 async def bot_webhook(
     update: dict,
     bot: FromDishka[Bot],
+    settings: FromDishka[Settings],
     x_telegram_bot_api_secret_token: Annotated[str | None, Header()] = None,
 ) -> None | dict:
-    if x_telegram_bot_api_secret_token != cfg.telegram_my_token:
+    if x_telegram_bot_api_secret_token != settings.telegram_my_token:
         logger.error("Wrong secret token !")
         return {"status": "error", "message": "Wrong secret token !"}
     telegram_update = types.Update(**update)
@@ -96,14 +97,15 @@ async def bot_webhook(
 async def jitsi_webhook(
     event: JitsiWebhookEvent,
     meet_controller: FromDishka[MeetController],
+    settings: FromDishka[Settings],
 ) -> None:
     try:
         jwt.decode(
             event.jwt,
-            cfg.jitsi_jwt_token,
+            settings.jitsi_jwt_token,
             algorithms=["HS256"],
-            audience=cfg.meeting_jwt_aud,
-            issuer=cfg.meeting_jwt_iss,
+            audience=settings.meeting_jwt_aud,
+            issuer=settings.meeting_jwt_iss,
         )
     except jwt.PyJWTError as e:
         logger.exception("Jitsi webhook JWT validation error")

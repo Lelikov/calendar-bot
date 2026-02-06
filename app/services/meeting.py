@@ -9,11 +9,10 @@ from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.controllers.chat import ChatController
 from app.dtos import BookingDTO
-from app.settings import get_settings
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
-cfg = get_settings()
 
 METADATA_WAIT_ATTEMPTS = 1
 METADATA_WAIT_DELAY = 5
@@ -25,10 +24,12 @@ class MeetingService:
         db: BookingDatabaseAdapter,
         shortener: UrlShortenerAdapter,
         chat_controller: ChatController,
+        settings: Settings,
     ) -> None:
         self.db = db
         self.shortener = shortener
         self.chat_controller = chat_controller
+        self.settings = settings
         self.timeshift = 5 * 60
 
     async def create_meeting_url(
@@ -79,8 +80,8 @@ class MeetingService:
 
     def _create_jitsi_token(self, *, booking: BookingDTO, participant_name: str, external_id_prefix: str) -> str:
         payload = {
-            "aud": cfg.meeting_jwt_aud,
-            "iss": cfg.meeting_jwt_iss,
+            "aud": self.settings.meeting_jwt_aud,
+            "iss": self.settings.meeting_jwt_iss,
             "sub": "*",
             "room": booking.uid,
             "iat": int(time.time()),
@@ -88,7 +89,7 @@ class MeetingService:
             "exp": self._get_meeting_expiration(booking.end_time),
             "context": {"user": {"name": participant_name, "role": "client" if external_id_prefix else "organizer"}},
         }
-        return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
+        return jwt.encode(payload, self.settings.jitsi_jwt_token, algorithm="HS256")
 
     async def _generate_url(
         self,
@@ -100,7 +101,7 @@ class MeetingService:
         external_id_prefix: str = "",
     ) -> str:
         long_url = (
-            f"{cfg.meeting_host_url}/{booking.uid}"
+            f"{self.settings.meeting_host_url}/{booking.uid}"
             f"?jwt_video={participant_video_token}&jwt_chat={participant_chat_token}"
         )
         try:

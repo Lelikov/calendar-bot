@@ -49,7 +49,7 @@ class TelegramService:
     async def start(self) -> None:
         fr = True
         if self.settings.is_check_first_run:
-            fr = await is_first_run()
+            fr = await is_first_run(self.settings.redis_url)
             if self.settings.debug:
                 logger.debug(f"First run: {fr}")
 
