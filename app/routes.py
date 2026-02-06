@@ -11,8 +11,8 @@ from starlette.requests import Request
 
 from app.bot import dp
 from app.controllers.booking import BookingController
-from app.controllers.mail import MailController
-from app.controllers.meet import MeetController
+from app.controllers.mail import MailWebhookController
+from app.controllers.meet import MeetWebhookController
 from app.schemas import BookingEvent, BookingReminderBody, JitsiWebhookEvent, MailWebhookEvent
 from app.settings import Settings
 
@@ -71,7 +71,7 @@ async def booking(
 @root_router.post("/mail/webhook")
 async def mail_webhook(
     event: MailWebhookEvent,
-    mail_controller: FromDishka[MailController],
+    mail_controller: FromDishka[MailWebhookController],
 ) -> None:
     logger.info(event)
     await mail_controller.handle_webhook(event.to_dto())
@@ -96,7 +96,7 @@ async def bot_webhook(
 @root_router.post("/jitsi/webhook")
 async def jitsi_webhook(
     event: JitsiWebhookEvent,
-    meet_controller: FromDishka[MeetController],
+    meet_controller: FromDishka[MeetWebhookController],
     settings: FromDishka[Settings],
 ) -> None:
     try:

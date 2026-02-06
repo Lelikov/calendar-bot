@@ -33,6 +33,36 @@ class BookingController:
         self.client_meeting_prefix = "client_"
         self.reminder_sent: set[str] = set()
 
+    async def handle_booking(self, booking_event: BookingEventDTO) -> None:
+        task = create_task(self._background_processing(booking_event))
+        self.background_tasks.add(task)
+        task.add_done_callback(self.background_tasks.discard)
+
+    async def handle_booking_reminder(self, start_time_from_shift: int, start_time_to_shift: int) -> int:
+        bookings = await self.db.get_bookings(
+            start_time_from=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=start_time_from_shift),
+            start_time_to=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=start_time_to_shift),
+        )
+        count_sent_reminders = 0
+        for booking in bookings:
+            if booking.uid in self.reminder_sent:
+                continue
+            self.reminder_sent.add(booking.uid)
+            if "cloud" in booking.metadata:
+                meeting_url = json.loads(booking.metadata).get("videoCallUrl")
+            else:
+                meeting_url = await self.meeting_service.get_meeting_url(
+                    booking=booking,
+                    external_id_prefix=self.client_meeting_prefix,
+                )
+            await self.notification_service.notify_client(
+                booking=booking,
+                meeting_url=meeting_url,
+                trigger_event=TriggerEvent.BOOKING_REMINDER,
+            )
+            count_sent_reminders += 1
+        return count_sent_reminders
+
     async def _process_booking_flow(
         self,
         booking_event: BookingEventDTO,
@@ -167,33 +197,3 @@ class BookingController:
                     logger.warning("Unknown trigger event", event=booking_event.trigger_event)
         except Exception:
             logger.exception("Error in background processing", uid=booking_event.payload.uid)
-
-    async def handle_booking(self, booking_event: BookingEventDTO) -> None:
-        task = create_task(self._background_processing(booking_event))
-        self.background_tasks.add(task)
-        task.add_done_callback(self.background_tasks.discard)
-
-    async def handle_booking_reminder(self, start_time_from_shift: int, start_time_to_shift: int) -> int:
-        bookings = await self.db.get_bookings(
-            start_time_from=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=start_time_from_shift),
-            start_time_to=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=start_time_to_shift),
-        )
-        count_sent_reminders = 0
-        for booking in bookings:
-            if booking.uid in self.reminder_sent:
-                continue
-            self.reminder_sent.add(booking.uid)
-            if "cloud" in booking.metadata:
-                meeting_url = json.loads(booking.metadata).get("videoCallUrl")
-            else:
-                meeting_url = await self.meeting_service.get_meeting_url(
-                    booking=booking,
-                    external_id_prefix=self.client_meeting_prefix,
-                )
-            await self.notification_service.notify_client(
-                booking=booking,
-                meeting_url=meeting_url,
-                trigger_event=TriggerEvent.BOOKING_REMINDER,
-            )
-            count_sent_reminders += 1
-        return count_sent_reminders

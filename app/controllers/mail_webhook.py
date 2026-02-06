@@ -11,7 +11,7 @@ logger = structlog.get_logger(__name__)
 processed_mail_webhook_ids: set[int] = set()
 
 
-class MailController:
+class MailWebhookController:
     def __init__(self, bot: Bot, settings: Settings) -> None:
         self.bot = bot
         self.settings = settings

@@ -6,14 +6,16 @@ from dishka import Provider, Scope, provide
 from redis.asyncio import Redis
 
 from app.adapters.db import BookingDatabaseAdapter
+from app.adapters.email import IEmailClient, UnisenderGoEmailClient
 from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.controllers.booking import BookingController
 from app.controllers.chat import ChatController
-from app.controllers.mail import MailController
-from app.controllers.meet import MeetController
+from app.controllers.mail import MailWebhookController
+from app.controllers.meet import MeetWebhookController
 from app.database import create_database
 from app.redis_pool import create_redis_pool
+from app.services.email import EmailService
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
 from app.services.telegram import TelegramService
@@ -38,8 +40,20 @@ class AppProvider(Provider):
         return Redis(connection_pool=create_redis_pool(settings))
 
     @provide(scope=Scope.APP)
-    def provide_mail_controller(self, bot: Bot, settings: Settings) -> MailController:
-        return MailController(bot=bot, settings=settings)
+    def provide_mail_webhook_controller(self, bot: Bot, settings: Settings) -> MailWebhookController:
+        return MailWebhookController(bot=bot, settings=settings)
+
+    @provide(scope=Scope.APP)
+    def provide_email_client(self, settings: Settings) -> IEmailClient:
+        return UnisenderGoEmailClient(
+            api_url=settings.email_api_url,
+            api_key=settings.email_api_key,
+            max_retries=3,
+        )
+
+    @provide(scope=Scope.APP)
+    def provide_email_service(self, client: IEmailClient, settings: Settings) -> EmailService:
+        return EmailService(client=client, settings=settings)
 
     @provide(scope=Scope.APP)
     def provide_db(self, database: Database) -> BookingDatabaseAdapter:
@@ -77,21 +91,22 @@ class AppProvider(Provider):
         db: BookingDatabaseAdapter,
         bot: Bot,
         settings: Settings,
+        email_service: EmailService,
     ) -> NotificationService:
-        return NotificationService(db=db, bot=bot, settings=settings)
+        return NotificationService(db=db, bot=bot, settings=settings, email_service=email_service)
 
     @provide(scope=Scope.APP)
     def provide_telegram_service(self, bot: Bot, settings: Settings) -> TelegramService:
         return TelegramService(bot=bot, settings=settings)
 
     @provide(scope=Scope.APP)
-    def provide_meet_controller(
+    def provide_meet_webhook_controller(
         self,
         db: BookingDatabaseAdapter,
         notification_service: NotificationService,
         redis: Redis,
-    ) -> MeetController:
-        return MeetController(db=db, notification_service=notification_service, redis=redis)
+    ) -> MeetWebhookController:
+        return MeetWebhookController(db=db, notification_service=notification_service, redis=redis)
 
     @provide(scope=Scope.REQUEST)
     def provide_booking_controller(

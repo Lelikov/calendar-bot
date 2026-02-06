@@ -9,12 +9,12 @@ from babel.dates import get_timezone_location
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.adapters.db import BookingDatabaseAdapter
-from app.adapters.email import EmailService
 from app.dtos import (
     BookingDTO,
     TriggerEvent,
     UserDTO,
 )
+from app.services.email import EmailService
 from app.settings import Settings
 
 
@@ -38,20 +38,20 @@ class NotificationService:
         },
     }
 
-    def __init__(self, db: BookingDatabaseAdapter, bot: Bot, settings: Settings) -> None:
+    def __init__(
+        self,
+        db: BookingDatabaseAdapter,
+        bot: Bot,
+        settings: Settings,
+        email_service: EmailService,
+    ) -> None:
         self.db = db
         self.bot = bot
         self.settings = settings
+        self.email_service = email_service
         self.jinja_env = Environment(
             loader=FileSystemLoader("app/templates"),
             autoescape=select_autoescape(),
-        )
-        self.email_service = EmailService(
-            from_email=settings.from_email,
-            from_email_name=settings.from_email_name,
-            reply_to_email=settings.reply_to_email,
-            reply_to_email_name=settings.reply_to_email_name,
-            settings=settings,
         )
         self.timeshift = 10 * 60
 

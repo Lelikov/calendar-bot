@@ -12,7 +12,7 @@ from app.services.notification import NotificationService
 logger = structlog.get_logger(__name__)
 
 
-class MeetController:
+class MeetWebhookController:
     def __init__(self, db: BookingDatabaseAdapter, notification_service: NotificationService, redis: Redis) -> None:
         self.db = db
         self.notification_service = notification_service
