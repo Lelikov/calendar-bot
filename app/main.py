@@ -4,8 +4,7 @@ from logging import getLevelNamesMapping
 
 import sentry_sdk
 import structlog
-from dishka import make_async_container
-from dishka.integrations.fastapi import FastapiProvider, setup_dishka
+from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,42 +13,41 @@ from fastapi.responses import JSONResponse
 from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
 from app.database import database
-from app.ioc import AppProvider
+from app.di import container
 from app.routes import root_router
-from app.settings import get_settings
+from app.services.telegram import TelegramService
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
 
-cfg = get_settings()
-
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
-    log_level = getLevelNamesMapping().get(cfg.log_level)
-    setup_logger(log_level=log_level, console_render=cfg.debug)
+    settings = await container.get(Settings)
+    log_level = getLevelNamesMapping().get(settings.log_level)
+    setup_logger(log_level=log_level, console_render=settings.debug)
+
+    if settings.sentry_dsn:
+        logger.info(f"Initializing Sentry with DSN: {settings.sentry_dsn}")
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            send_default_pii=True,
+            environment="dev" if settings.debug else "production",
+            debug=settings.debug,
+        )
 
     logger.info("🚀 Starting application")
     await database.connect()
-    from app.bot import start_telegram  # noqa: PLC0415
-
-    await start_telegram(base_webhook_url=cfg.base_webhook_url)
+    telegram_service = await container.get(TelegramService)
+    await telegram_service.start()
     yield
+
     await database.disconnect()
     logger.info("⛔ Stopping application")
 
 
-if cfg.sentry_dsn:
-    logger.info(f"Initializing Sentry with DSN: {cfg.sentry_dsn}")
-    sentry_sdk.init(
-        dsn=cfg.sentry_dsn,
-        send_default_pii=True,
-        environment="dev" if cfg.debug else "production",
-        debug=cfg.debug,
-    )
-
 app = FastAPI(lifespan=lifespan)
-container = make_async_container(AppProvider(), FastapiProvider())
 setup_dishka(container, app)
 
 app.add_middleware(
@@ -60,6 +58,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(root_router)
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -68,6 +68,3 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         content={"detail": exc.errors()},
     )
-
-
-app.include_router(root_router)

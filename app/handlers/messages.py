@@ -9,17 +9,16 @@ from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from aiogram.utils.payload import decode_payload
+from databases import Database
+from dishka.integrations.aiogram import FromDishka, inject
 
-from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import telegram_router
 from app.controllers.chat import ChatController
-from app.database import database
-from app.settings import get_settings
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
-cfg = get_settings()
 
 
 @telegram_router.message(Command("id"))
@@ -28,7 +27,12 @@ async def cmd_id(message: Message) -> None:
 
 
 @telegram_router.message(CommandStart(deep_link=True))
-async def cmd_start(message: Message, command: CommandObject) -> None:
+@inject
+async def cmd_start(
+    message: Message,
+    command: CommandObject,
+    database: FromDishka[Database],
+) -> None:
     try:
         user_id, telegram_token = decode_payload(command.args).split("@")
         user_id = int(user_id)
@@ -64,7 +68,15 @@ async def hello(message: types.Message) -> None:
 
 
 @telegram_router.message(Command("meeting_test"))
-async def meeting_test(message: types.Message, command: CommandObject) -> None:
+@inject
+async def meeting_test(
+    message: types.Message,
+    command: CommandObject,
+    database: FromDishka[Database],
+    chat_controller: FromDishka[ChatController],
+    shortener: FromDishka[UrlShortenerAdapter],
+    settings: FromDishka[Settings],
+) -> None:
     args = (command.args or "").split(",")
     if not args or len(args) != 2:
         await message.answer("Введите имя и почту второго участника через запятую")
@@ -90,8 +102,8 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
 
     def create_jitsi_token(participant_name: str, role: str) -> str:
         payload = {
-            "aud": cfg.meeting_jwt_aud,
-            "iss": cfg.meeting_jwt_iss,
+            "aud": settings.meeting_jwt_aud,
+            "iss": settings.meeting_jwt_iss,
             "sub": "*",
             "room": meeting_uid,
             "iat": start_time,
@@ -99,17 +111,10 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
             "exp": end_time,
             "context": {"user": {"name": participant_name, "role": role}},
         }
-        return jwt.encode(payload, cfg.jitsi_jwt_token, algorithm="HS256")
+        return jwt.encode(payload, settings.jitsi_jwt_token, algorithm="HS256")
 
     client_video_token = create_jitsi_token(client_name, role="client")
     organizer_video_token = create_jitsi_token(organizer_name, role="organizer")
-
-    chat_adapter = GetStreamAdapter(
-        chat_api_key=cfg.chat_api_key,
-        chat_api_secret=cfg.chat_api_secret,
-        user_id_encryption_key=cfg.chat_user_id_encryption_key,
-    )
-    chat_controller = ChatController(client=chat_adapter)
 
     await chat_controller.create_chat(
         channel_id=meeting_uid,
@@ -129,18 +134,17 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
     )
 
     client_long_url = (
-        f"{cfg.meeting_host_url}/{meeting_uid}?jwt_video={client_video_token}&jwt_chat={client_chat_token}"
+        f"{settings.meeting_host_url}/{meeting_uid}?jwt_video={client_video_token}&jwt_chat={client_chat_token}"
     )
     organizer_long_url = (
-        f"{cfg.meeting_host_url}/{meeting_uid}?jwt_video={organizer_video_token}&jwt_chat={organizer_chat_token}"
+        f"{settings.meeting_host_url}/{meeting_uid}?jwt_video={organizer_video_token}&jwt_chat={organizer_chat_token}"
     )
-    shortner = UrlShortenerAdapter()
-    client_short_url = await shortner.create_url(
+    client_short_url = await shortener.create_url(
         external_id=f"client_{meeting_uid}",
         long_url=client_long_url,
         expires_at=end_time,
     )
-    organizer_short_url = await shortner.create_url(
+    organizer_short_url = await shortener.create_url(
         external_id=f"{meeting_uid}",
         long_url=organizer_long_url,
         expires_at=end_time,

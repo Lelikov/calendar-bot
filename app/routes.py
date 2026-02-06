@@ -4,12 +4,12 @@ from typing import Annotated
 
 import jwt
 import structlog
-from aiogram import types
+from aiogram import Bot, types
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter, Header, HTTPException, status
 from starlette.requests import Request
 
-from app.bot import bot, dp
+from app.bot import dp
 from app.controllers.booking import BookingController
 from app.controllers.mail import MailController
 from app.controllers.meet import MeetController
@@ -81,6 +81,7 @@ async def mail_webhook(
 @root_router.post(cfg.webhook_path)
 async def bot_webhook(
     update: dict,
+    bot: FromDishka[Bot],
     x_telegram_bot_api_secret_token: Annotated[str | None, Header()] = None,
 ) -> None | dict:
     if x_telegram_bot_api_secret_token != cfg.telegram_my_token:
