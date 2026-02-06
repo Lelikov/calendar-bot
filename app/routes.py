@@ -11,8 +11,8 @@ from starlette.requests import Request
 
 from app.bot import dp
 from app.controllers.booking import BookingController
-from app.controllers.mail import MailWebhookController
-from app.controllers.meet import MeetWebhookController
+from app.controllers.mail_webhook import MailWebhookController
+from app.controllers.meet_webhook import MeetWebhookController
 from app.schemas import BookingEvent, BookingReminderBody, JitsiWebhookEvent, MailWebhookEvent
 from app.settings import Settings
 

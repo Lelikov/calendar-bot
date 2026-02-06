@@ -11,14 +11,14 @@ from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.controllers.booking import BookingController
 from app.controllers.chat import ChatController
-from app.controllers.mail import MailWebhookController
-from app.controllers.meet import MeetWebhookController
+from app.controllers.email import EmailController
+from app.controllers.mail_webhook import MailWebhookController
+from app.controllers.meet_webhook import MeetWebhookController
+from app.controllers.meeting import MeetingController
+from app.controllers.notification import NotificationController
+from app.controllers.telegram import TelegramController
 from app.database import create_database
 from app.redis_pool import create_redis_pool
-from app.services.email import EmailService
-from app.services.meeting import MeetingService
-from app.services.notification import NotificationService
-from app.services.telegram import TelegramService
 from app.settings import Settings
 
 
@@ -52,8 +52,8 @@ class AppProvider(Provider):
         )
 
     @provide(scope=Scope.APP)
-    def provide_email_service(self, client: IEmailClient, settings: Settings) -> EmailService:
-        return EmailService(client=client, settings=settings)
+    def provide_email_controller(self, client: IEmailClient, settings: Settings) -> EmailController:
+        return EmailController(client=client, settings=settings)
 
     @provide(scope=Scope.APP)
     def provide_db(self, database: Database) -> BookingDatabaseAdapter:
@@ -76,37 +76,37 @@ class AppProvider(Provider):
         return ChatController(client=chat_adapter)
 
     @provide(scope=Scope.APP)
-    def provide_meeting_service(
+    def provide_meeting_controller(
         self,
         db: BookingDatabaseAdapter,
         shortener: UrlShortenerAdapter,
         chat_controller: ChatController,
         settings: Settings,
-    ) -> MeetingService:
-        return MeetingService(db=db, shortener=shortener, chat_controller=chat_controller, settings=settings)
+    ) -> MeetingController:
+        return MeetingController(db=db, shortener=shortener, chat_controller=chat_controller, settings=settings)
 
     @provide(scope=Scope.APP)
-    def provide_notification_service(
+    def provide_notification_controller(
         self,
         db: BookingDatabaseAdapter,
         bot: Bot,
         settings: Settings,
-        email_service: EmailService,
-    ) -> NotificationService:
-        return NotificationService(db=db, bot=bot, settings=settings, email_service=email_service)
+        email_controller: EmailController,
+    ) -> NotificationController:
+        return NotificationController(db=db, bot=bot, settings=settings, email_controller=email_controller)
 
     @provide(scope=Scope.APP)
-    def provide_telegram_service(self, bot: Bot, settings: Settings) -> TelegramService:
-        return TelegramService(bot=bot, settings=settings)
+    def provide_telegram_controller(self, bot: Bot, settings: Settings) -> TelegramController:
+        return TelegramController(bot=bot, settings=settings)
 
     @provide(scope=Scope.APP)
     def provide_meet_webhook_controller(
         self,
         db: BookingDatabaseAdapter,
-        notification_service: NotificationService,
+        notification_controller: NotificationController,
         redis: Redis,
     ) -> MeetWebhookController:
-        return MeetWebhookController(db=db, notification_service=notification_service, redis=redis)
+        return MeetWebhookController(db=db, notification_controller=notification_controller, redis=redis)
 
     @provide(scope=Scope.REQUEST)
     def provide_booking_controller(
@@ -114,13 +114,13 @@ class AppProvider(Provider):
         db: BookingDatabaseAdapter,
         shortener: UrlShortenerAdapter,
         chat_controller: ChatController,
-        meeting_service: MeetingService,
-        notification_service: NotificationService,
+        meeting_controller: MeetingController,
+        notification_controller: NotificationController,
     ) -> BookingController:
         return BookingController(
             db=db,
             shortener=shortener,
             chat_controller=chat_controller,
-            meeting_service=meeting_service,
-            notification_service=notification_service,
+            meeting_controller=meeting_controller,
+            notification_controller=notification_controller,
         )

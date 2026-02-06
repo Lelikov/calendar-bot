@@ -1,8 +1,8 @@
 from typing import Protocol
 
 import structlog
-from app.clients.postal_client import EmailAddress
 
+from app.clients.models import EmailAddress
 from app.clients.unisender_go_client import SendMessageRequest as UnisenderSendMessageRequest
 from app.clients.unisender_go_client import UnisenderGoClient, UnisenderGoError
 

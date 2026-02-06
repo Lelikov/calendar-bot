@@ -9,12 +9,12 @@ from babel.dates import get_timezone_location
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.adapters.db import BookingDatabaseAdapter
+from app.controllers.email import EmailController
 from app.dtos import (
     BookingDTO,
     TriggerEvent,
     UserDTO,
 )
-from app.services.email import EmailService
 from app.settings import Settings
 
 
@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 TIME_FORMAT = "%d-%m-%Y, %H:%M"
 
 
-class NotificationService:
+class NotificationController:
     EMAIL_TEMPLATES: ClassVar = {
         "organizer": {
             TriggerEvent.BOOKING_CREATED: ("organizer/confirmation.html", "✅Новая запись"),
@@ -43,12 +43,12 @@ class NotificationService:
         db: BookingDatabaseAdapter,
         bot: Bot,
         settings: Settings,
-        email_service: EmailService,
+        email_controller: EmailController,
     ) -> None:
         self.db = db
         self.bot = bot
         self.settings = settings
-        self.email_service = email_service
+        self.email_controller = email_controller
         self.jinja_env = Environment(
             loader=FileSystemLoader("app/templates"),
             autoescape=select_autoescape(),
@@ -201,7 +201,7 @@ class NotificationService:
             template = self.jinja_env.get_template(template_name)
             html_content = template.render(**context)
             logger.info(f"Sending email to {role}", email=recipient_email, trigger_event=trigger_event)
-            await self.email_service.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
+            await self.email_controller.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
         except Exception:
             logger.exception(f"Error sending email to {role}")
 

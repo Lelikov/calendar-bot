@@ -18,7 +18,7 @@ METADATA_WAIT_ATTEMPTS = 1
 METADATA_WAIT_DELAY = 5
 
 
-class MeetingService:
+class MeetingController:
     def __init__(
         self,
         db: BookingDatabaseAdapter,

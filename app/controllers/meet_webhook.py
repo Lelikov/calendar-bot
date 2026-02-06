@@ -5,17 +5,22 @@ import structlog
 from redis.asyncio import Redis
 
 from app.adapters.db import BookingDatabaseAdapter
+from app.controllers.notification import NotificationController
 from app.dtos import MeetWebhookEventDTO, MeetWebhookEventType, TriggerEvent
-from app.services.notification import NotificationService
 
 
 logger = structlog.get_logger(__name__)
 
 
 class MeetWebhookController:
-    def __init__(self, db: BookingDatabaseAdapter, notification_service: NotificationService, redis: Redis) -> None:
+    def __init__(
+        self,
+        db: BookingDatabaseAdapter,
+        notification_controller: NotificationController,
+        redis: Redis,
+    ) -> None:
         self.db = db
-        self.notification_service = notification_service
+        self.notification_controller = notification_controller
         self.redis = redis
 
     async def handle_webhook(self, event: MeetWebhookEventDTO) -> None:
@@ -32,7 +37,7 @@ class MeetWebhookController:
             if not booking:
                 return None
 
-            await self.notification_service.notify_organizer_telegram(
+            await self.notification_controller.notify_organizer_telegram(
                 booking=booking,
                 trigger_event=TriggerEvent.MEET_CLIENT_JOINED,
                 user=booking.user,

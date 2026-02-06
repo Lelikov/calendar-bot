@@ -2,7 +2,7 @@ from app.adapters.email import IEmailClient
 from app.settings import Settings
 
 
-class EmailService:
+class EmailController:
     def __init__(self, client: IEmailClient, settings: Settings) -> None:
         self.client = client
         self.from_email = settings.from_email

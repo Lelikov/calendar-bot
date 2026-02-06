@@ -7,9 +7,9 @@ import structlog
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.controllers.chat import ChatController
+from app.controllers.meeting import MeetingController
+from app.controllers.notification import NotificationController
 from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
-from app.services.meeting import MeetingService
-from app.services.notification import NotificationService
 
 
 logger = structlog.get_logger(__name__)
@@ -21,14 +21,14 @@ class BookingController:
         db: BookingDatabaseAdapter,
         shortener: UrlShortenerAdapter,
         chat_controller: ChatController,
-        meeting_service: MeetingService,
-        notification_service: NotificationService,
+        meeting_controller: MeetingController,
+        notification_controller: NotificationController,
     ) -> None:
         self.db = db
         self.shortener = shortener
         self.chat_controller = chat_controller
-        self.meeting_service = meeting_service
-        self.notification_service = notification_service
+        self.meeting_controller = meeting_controller
+        self.notification_controller = notification_controller
         self.background_tasks: set[Task] = set()
         self.client_meeting_prefix = "client_"
         self.reminder_sent: set[str] = set()
@@ -51,11 +51,11 @@ class BookingController:
             if "cloud" in booking.metadata:
                 meeting_url = json.loads(booking.metadata).get("videoCallUrl")
             else:
-                meeting_url = await self.meeting_service.get_meeting_url(
+                meeting_url = await self.meeting_controller.get_meeting_url(
                     booking=booking,
                     external_id_prefix=self.client_meeting_prefix,
                 )
-            await self.notification_service.notify_client(
+            await self.notification_controller.notify_client(
                 booking=booking,
                 meeting_url=meeting_url,
                 trigger_event=TriggerEvent.BOOKING_REMINDER,
@@ -89,21 +89,21 @@ class BookingController:
             except Exception:
                 logger.exception("Error while deleting chat for previous booking", uid=booking.uid)
 
-        organizer_meeting_url = await self.meeting_service.create_meeting_url(
+        organizer_meeting_url = await self.meeting_controller.create_meeting_url(
             booking=booking,
             participant_id=booking.user.email,
             participant_name=booking.user.name,
             is_update_url_data=is_update_url_data,
             is_update_url_in_db=True,
         )
-        await self.notification_service.notify_organizer(
+        await self.notification_controller.notify_organizer(
             user=booking.user,
             booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=organizer_meeting_url,
         )
 
-        client_meeting_url = await self.meeting_service.create_meeting_url(
+        client_meeting_url = await self.meeting_controller.create_meeting_url(
             booking=booking,
             participant_id=booking.client.email,
             participant_name=booking.client.name,
@@ -111,7 +111,7 @@ class BookingController:
             is_update_url_in_db=False,
             external_id_prefix=self.client_meeting_prefix,
         )
-        await self.notification_service.notify_client(
+        await self.notification_controller.notify_client(
             booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=client_meeting_url,
@@ -127,7 +127,7 @@ class BookingController:
     async def _handle_reassigned(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
         if previous_organizer := await self.db.get_user_by_id(user_id=booking.reassign_by_id):
-            await self.notification_service.notify_organizer(
+            await self.notification_controller.notify_organizer(
                 user=previous_organizer,
                 booking=booking,
                 trigger_event=TriggerEvent.BOOKING_CANCELLED,
@@ -146,14 +146,14 @@ class BookingController:
         if booking.from_reschedule:
             booking.from_reschedule = None
 
-        meeting_url = await self.meeting_service.create_meeting_url(
+        meeting_url = await self.meeting_controller.create_meeting_url(
             booking=booking,
             participant_id=booking.user.email,
             participant_name=booking.user.name,
             is_update_url_data=True,
             is_update_url_in_db=True,
         )
-        await self.notification_service.notify_organizer(
+        await self.notification_controller.notify_organizer(
             user=booking.user,
             booking=booking,
             trigger_event=TriggerEvent.BOOKING_CREATED,
@@ -163,13 +163,13 @@ class BookingController:
     async def _handle_cancelled(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
 
-        await self.notification_service.notify_organizer(
+        await self.notification_controller.notify_organizer(
             user=booking.user,
             booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
         )
-        await self.notification_service.notify_client(
+        await self.notification_controller.notify_client(
             booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
@@ -178,8 +178,8 @@ class BookingController:
             await self.chat_controller.delete_chat(channel_id=booking.uid)
         except Exception:
             logger.exception("Error while deleting chat for booking", uid=booking.uid)
-        await self.meeting_service.delete_meeting_url(booking=booking)
-        await self.meeting_service.delete_meeting_url(booking=booking, external_id_prefix=self.client_meeting_prefix)
+        await self.meeting_controller.delete_meeting_url(booking=booking)
+        await self.meeting_controller.delete_meeting_url(booking=booking, external_id_prefix=self.client_meeting_prefix)
 
     async def _background_processing(self, booking_event: BookingEventDTO) -> None:
         logger.info("Processing booking event", uid=booking_event.payload.uid, type=booking_event.trigger_event)

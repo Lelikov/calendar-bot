@@ -13,9 +13,9 @@ from fastapi.responses import JSONResponse
 
 from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
+from app.controllers.telegram import TelegramController
 from app.di import container
 from app.routes import root_router
-from app.services.telegram import TelegramService
 from app.settings import Settings
 
 
@@ -40,8 +40,8 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("🚀 Starting application")
     database = await container.get(Database)
     await database.connect()
-    telegram_service = await container.get(TelegramService)
-    await telegram_service.start()
+    telegram_controller = await container.get(TelegramController)
+    await telegram_controller.start()
     yield
     await database.disconnect()
     logger.info("⛔ Stopping application")
