@@ -45,10 +45,6 @@ def get_booking_controller() -> BookingController:
     )
 
 
-def get_meet_controller() -> MeetController:
-    return MeetController(db=BookingDatabaseAdapter(cfg.postgres_dsn))
-
-
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
     booking_controller: Annotated[BookingController, Depends(get_booking_controller)],
@@ -108,7 +104,7 @@ async def bot_webhook(
 @root_router.post("/jitsi/webhook")
 async def jitsi_webhook(
     event: JitsiWebhookEvent,
-    meet_controller: Annotated[MeetController, Depends(get_meet_controller)],
+    meet_controller: FromDishka[MeetController],
 ) -> None:
     try:
         jwt.decode(

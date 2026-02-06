@@ -5,9 +5,7 @@ import structlog
 from redis.asyncio import Redis
 
 from app.adapters.db import BookingDatabaseAdapter
-from app.bot import bot
 from app.dtos import MeetWebhookEventDTO, MeetWebhookEventType, TriggerEvent
-from app.redis_pool import pool
 from app.services.notification import NotificationService
 
 
@@ -15,10 +13,10 @@ logger = structlog.get_logger(__name__)
 
 
 class MeetController:
-    def __init__(self, db: BookingDatabaseAdapter) -> None:
+    def __init__(self, db: BookingDatabaseAdapter, notification_service: NotificationService, redis: Redis) -> None:
         self.db = db
-        self.notification_service = NotificationService(db, bot)
-        self.redis = Redis(connection_pool=pool)
+        self.notification_service = notification_service
+        self.redis = redis
 
     async def handle_webhook(self, event: MeetWebhookEventDTO) -> None:
         claims = jwt.decode(event.jwt.encode(), options={"verify_signature": False})
