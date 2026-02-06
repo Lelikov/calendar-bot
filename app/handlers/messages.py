@@ -98,6 +98,7 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
             "sub": "*",
             "room": meeting_uid,
             "iat": start_time,
+            "nbf": start_time,
             "exp": end_time,
             "context": {"user": {"name": participant_name, "role": role}},
         }
