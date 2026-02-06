@@ -9,12 +9,12 @@ from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from aiogram.utils.payload import decode_payload
-from databases import Database
 
 from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import telegram_router
 from app.controllers.chat import ChatController
+from app.database import database
 from app.settings import get_settings
 
 
@@ -37,9 +37,8 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
         await message.answer("Ошибка регистрации. Обратитесь к администратору")
         return None
 
-    async with Database(cfg.postgres_dsn) as database:
-        query = "SELECT name, telegram_chat_id, telegram_token FROM users WHERE locked = FALSE AND id = :id "
-        row = await database.fetch_one(query=query, values={"id": user_id})
+    query = "SELECT name, telegram_chat_id, telegram_token FROM users WHERE locked = FALSE AND id = :id "
+    row = await database.fetch_one(query=query, values={"id": user_id})
 
     if not row:
         return None
@@ -49,10 +48,9 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
         return None
 
     if row["telegram_token"] == telegram_token:
-        async with Database(cfg.postgres_dsn) as database:
-            query = "UPDATE users SET telegram_chat_id = :telegram_chat_id WHERE id = :id"
-            await database.execute(query=query, values={"id": user_id, "telegram_chat_id": message.chat.id})
-            await message.answer(f"Добро пожаловать, {hbold(row['name'])}")
+        query = "UPDATE users SET telegram_chat_id = :telegram_chat_id WHERE id = :id"
+        await database.execute(query=query, values={"id": user_id, "telegram_chat_id": message.chat.id})
+        await message.answer(f"Добро пожаловать, {hbold(row['name'])}")
     return None
 
 
@@ -77,9 +75,8 @@ async def meeting_test(message: types.Message, command: CommandObject) -> None:
         await message.answer(f"Почта второго участника {client_email} указана неправильно")
         return None
 
-    async with Database(cfg.postgres_dsn) as database:
-        query = "SELECT name, email FROM users WHERE locked = FALSE AND telegram_chat_id = :telegram_chat_id "
-        row = await database.fetch_one(query=query, values={"telegram_chat_id": message.from_user.id})
+    query = "SELECT name, email FROM users WHERE locked = FALSE AND telegram_chat_id = :telegram_chat_id "
+    row = await database.fetch_one(query=query, values={"telegram_chat_id": message.from_user.id})
 
     if not row:
         return None

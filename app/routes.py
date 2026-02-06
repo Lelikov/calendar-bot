@@ -6,11 +6,9 @@ import jwt
 import structlog
 from aiogram import types
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, status
 from starlette.requests import Request
 
-from app.adapters.db import BookingDatabaseAdapter
-from app.adapters.shortener import UrlShortenerAdapter
 from app.bot import bot, dp
 from app.controllers.booking import BookingController
 from app.controllers.mail import MailController
@@ -37,17 +35,9 @@ async def validate_signature(signature: str, request: Request) -> bool:
     return signature == hmac.new(cfg.cal_signature.encode(), body, hashlib.sha256).hexdigest()
 
 
-def get_booking_controller() -> BookingController:
-    return BookingController(
-        db=BookingDatabaseAdapter(cfg.postgres_dsn),
-        shortener=UrlShortenerAdapter(),
-        bot=bot,
-    )
-
-
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
-    booking_controller: Annotated[BookingController, Depends(get_booking_controller)],
+    booking_controller: FromDishka[BookingController],
     body: BookingReminderBody | None = None,
     admin_api_token: Annotated[str | None, Header(alias="admin-api-token")] = None,
 ) -> int:
@@ -68,7 +58,7 @@ async def booking(
     booking_event: BookingEvent,
     request: Request,
     signature: Annotated[str | None, Header(alias="x-cal-signature-256")],
-    booking_controller: Annotated[BookingController, Depends(get_booking_controller)],
+    booking_controller: FromDishka[BookingController],
 ) -> None:
     if not cfg.debug and not await validate_signature(signature=signature, request=request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")

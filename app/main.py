@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
+from app.database import database
 from app.ioc import AppProvider
 from app.routes import root_router
 from app.settings import get_settings
@@ -29,11 +30,12 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     setup_logger(log_level=log_level, console_render=cfg.debug)
 
     logger.info("🚀 Starting application")
+    await database.connect()
     from app.bot import start_telegram  # noqa: PLC0415
 
     await start_telegram(base_webhook_url=cfg.base_webhook_url)
     yield
-    await app.state.dishka_container.close()
+    await database.disconnect()
     logger.info("⛔ Stopping application")
 
 

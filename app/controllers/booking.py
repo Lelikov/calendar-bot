@@ -3,33 +3,32 @@ import json
 from asyncio import Task, create_task
 
 import structlog
-from aiogram import Bot
 
 from app.adapters.db import BookingDatabaseAdapter
-from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.controllers.chat import ChatController
 from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
 from app.services.meeting import MeetingService
 from app.services.notification import NotificationService
-from app.settings import get_settings
 
 
 logger = structlog.get_logger(__name__)
-cfg = get_settings()
 
 
 class BookingController:
-    def __init__(self, db: BookingDatabaseAdapter, shortener: UrlShortenerAdapter, bot: Bot) -> None:
+    def __init__(
+        self,
+        db: BookingDatabaseAdapter,
+        shortener: UrlShortenerAdapter,
+        chat_controller: ChatController,
+        meeting_service: MeetingService,
+        notification_service: NotificationService,
+    ) -> None:
         self.db = db
-        self.chat_adapter = GetStreamAdapter(
-            chat_api_key=cfg.chat_api_key,
-            chat_api_secret=cfg.chat_api_secret,
-            user_id_encryption_key=cfg.chat_user_id_encryption_key,
-        )
-        self.chat_controller = ChatController(client=self.chat_adapter)
-        self.meeting_service = MeetingService(db=db, shortener=shortener, chat_controller=self.chat_controller)
-        self.notification_service = NotificationService(db, bot)
+        self.shortener = shortener
+        self.chat_controller = chat_controller
+        self.meeting_service = meeting_service
+        self.notification_service = notification_service
         self.background_tasks: set[Task] = set()
         self.client_meeting_prefix = "client_"
         self.reminder_sent: set[str] = set()
