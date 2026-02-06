@@ -3,7 +3,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from databases import Database
 from dishka import Provider, Scope, provide
-from redis.asyncio import Redis
+from redis.asyncio import ConnectionPool, Redis
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.email import IEmailClient, UnisenderGoEmailClient
@@ -17,8 +17,6 @@ from app.controllers.meet_webhook import MeetWebhookController
 from app.controllers.meeting import MeetingController
 from app.controllers.notification import NotificationController
 from app.controllers.telegram import TelegramController
-from app.database import create_database
-from app.redis_pool import create_redis_pool
 from app.settings import Settings
 
 
@@ -33,11 +31,11 @@ class AppProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_database(self, settings: Settings) -> Database:
-        return create_database(settings)
+        return Database(settings.postgres_dsn)
 
     @provide(scope=Scope.APP)
     def provide_redis(self, settings: Settings) -> Redis:
-        return Redis(connection_pool=create_redis_pool(settings))
+        return Redis(connection_pool=ConnectionPool.from_url(settings.redis_url))
 
     @provide(scope=Scope.APP)
     def provide_mail_webhook_controller(self, bot: Bot, settings: Settings) -> MailWebhookController:

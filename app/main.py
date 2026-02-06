@@ -11,10 +11,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
 from app.controllers.telegram import TelegramController
 from app.di import container
+from app.handlers import messages  # noqa: F401
 from app.routes import root_router
 from app.settings import Settings
 
