@@ -5,6 +5,7 @@ from typing import Annotated
 import jwt
 import structlog
 from aiogram import types
+from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from starlette.requests import Request
 
@@ -27,6 +28,7 @@ root_router = APIRouter(
     prefix="",
     tags=["root"],
     responses={404: {"description": "Not found"}},
+    route_class=DishkaRoute,
 )
 
 
@@ -45,10 +47,6 @@ def get_booking_controller() -> BookingController:
 
 def get_meet_controller() -> MeetController:
     return MeetController(db=BookingDatabaseAdapter(cfg.postgres_dsn))
-
-
-def get_mail_controller() -> MailController:
-    return MailController(bot=bot, settings=cfg)
 
 
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
@@ -87,7 +85,7 @@ async def booking(
 @root_router.post("/mail/webhook")
 async def mail_webhook(
     event: MailWebhookEvent,
-    mail_controller: Annotated[MailController, Depends(get_mail_controller)],
+    mail_controller: FromDishka[MailController],
 ) -> None:
     logger.info(event)
     await mail_controller.handle_webhook(event.to_dto())

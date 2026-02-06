@@ -4,6 +4,8 @@ from logging import getLevelNamesMapping
 
 import sentry_sdk
 import structlog
+from dishka import make_async_container
+from dishka.integrations.fastapi import FastapiProvider, setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app import handlers  # noqa: F401
 from app.config.logger import setup_logger
+from app.ioc import AppProvider
 from app.routes import root_router
 from app.settings import get_settings
 
@@ -30,6 +33,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
     await start_telegram(base_webhook_url=cfg.base_webhook_url)
     yield
+    await app.state.dishka_container.close()
     logger.info("⛔ Stopping application")
 
 
@@ -43,6 +47,8 @@ if cfg.sentry_dsn:
     )
 
 app = FastAPI(lifespan=lifespan)
+container = make_async_container(AppProvider(), FastapiProvider())
+setup_dishka(container, app)
 
 app.add_middleware(
     CORSMiddleware,
