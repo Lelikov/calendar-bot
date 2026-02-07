@@ -14,11 +14,13 @@ from tenacity import (
     wait_exponential,
 )
 
+from app.interfaces.chat import IChatClient
+
 
 logger = structlog.get_logger(__name__)
 
 
-class GetStreamAdapter:
+class GetStreamAdapter(IChatClient):
     def __init__(self, chat_api_key: str, chat_api_secret: str, user_id_encryption_key: str) -> None:
         self.chat_api_key = chat_api_key
         self.chat_api_secret = chat_api_secret

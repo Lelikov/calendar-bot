@@ -5,10 +5,11 @@ from datetime import datetime
 import jwt
 import structlog
 
-from app.adapters.db import BookingDatabaseAdapter
-from app.adapters.shortener import UrlShortenerAdapter
-from app.controllers.chat import ChatController
 from app.dtos import BookingDTO
+from app.interfaces.booking import IBookingDatabaseAdapter
+from app.interfaces.chat import IChatController
+from app.interfaces.meeting import IMeetingController
+from app.interfaces.url_shortener import IUrlShortener
 from app.settings import Settings
 
 
@@ -18,12 +19,12 @@ METADATA_WAIT_ATTEMPTS = 1
 METADATA_WAIT_DELAY = 5
 
 
-class MeetingController:
+class MeetingController(IMeetingController):
     def __init__(
         self,
-        db: BookingDatabaseAdapter,
-        shortener: UrlShortenerAdapter,
-        chat_controller: ChatController,
+        db: IBookingDatabaseAdapter,
+        shortener: IUrlShortener,
+        chat_controller: IChatController,
         settings: Settings,
     ) -> None:
         self.db = db

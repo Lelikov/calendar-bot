@@ -8,13 +8,13 @@ from aiogram.types import LinkPreviewOptions
 from babel.dates import get_timezone_location
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app.adapters.db import BookingDatabaseAdapter
-from app.controllers.email import EmailController
 from app.dtos import (
     BookingDTO,
     TriggerEvent,
     UserDTO,
 )
+from app.interfaces.booking import IBookingDatabaseAdapter
+from app.interfaces.mail import IEmailController
 from app.settings import Settings
 
 
@@ -40,10 +40,10 @@ class NotificationController:
 
     def __init__(
         self,
-        db: BookingDatabaseAdapter,
+        db: IBookingDatabaseAdapter,
         bot: Bot,
         settings: Settings,
-        email_controller: EmailController,
+        email_controller: IEmailController,
     ) -> None:
         self.db = db
         self.bot = bot

@@ -3,12 +3,12 @@ from datetime import UTC
 
 from sqlalchemy.engine import RowMapping
 
-from app.adapters.sql import SqlExecutor
 from app.dtos import BookingClientDTO, BookingDTO, UserDTO
+from app.interfaces.sql import ISqlExecutor
 
 
 class BookingDatabaseAdapter:
-    def __init__(self, sql: SqlExecutor) -> None:
+    def __init__(self, sql: ISqlExecutor) -> None:
         self.sql = sql
 
     async def get_user_by_email(self, email: str) -> UserDTO | None:

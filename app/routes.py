@@ -9,9 +9,9 @@ from dishka.integrations.fastapi import DishkaRoute, FromDishka
 from fastapi import APIRouter, Header, HTTPException, status
 from starlette.requests import Request
 
-from app.controllers.booking import BookingController
-from app.controllers.mail_webhook import MailWebhookController
-from app.controllers.meet_webhook import MeetWebhookController
+from app.interfaces.booking import IBookingController
+from app.interfaces.mail import IMailWebhookController
+from app.interfaces.meeting import IMeetWebhookController
 from app.ioc import dp
 from app.schemas import BookingEvent, BookingReminderBody, JitsiWebhookEvent, MailWebhookEvent
 from app.settings import Settings
@@ -35,7 +35,7 @@ async def validate_signature(signature: str, request: Request) -> bool:
 
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
-    booking_controller: FromDishka[BookingController],
+    booking_controller: FromDishka[IBookingController],
     settings: FromDishka[Settings],
     body: BookingReminderBody | None = None,
     admin_api_token: Annotated[str | None, Header(alias="admin-api-token")] = None,
@@ -58,7 +58,7 @@ async def booking(
     request: Request,
     signature: Annotated[str | None, Header(alias="x-cal-signature-256")],
     settings: FromDishka[Settings],
-    booking_controller: FromDishka[BookingController],
+    booking_controller: FromDishka[IBookingController],
 ) -> None:
     if not settings.debug and not await validate_signature(signature=signature, request=request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
@@ -71,7 +71,7 @@ async def booking(
 @root_router.post("/mail/webhook")
 async def mail_webhook(
     event: MailWebhookEvent,
-    mail_controller: FromDishka[MailWebhookController],
+    mail_controller: FromDishka[IMailWebhookController],
 ) -> None:
     logger.info(event)
     await mail_controller.handle_webhook(event.to_dto())
@@ -96,7 +96,7 @@ async def bot_webhook(
 @root_router.post("/jitsi/webhook")
 async def jitsi_webhook(
     event: JitsiWebhookEvent,
-    meet_controller: FromDishka[MeetWebhookController],
+    meet_controller: FromDishka[IMeetWebhookController],
     settings: FromDishka[Settings],
 ) -> None:
     try:

@@ -1,4 +1,4 @@
-from app.adapters.email import IEmailClient
+from app.interfaces.mail import IEmailClient
 from app.settings import Settings
 
 

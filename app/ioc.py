@@ -9,7 +9,7 @@ from redis.asyncio import ConnectionPool, Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.adapters.db import BookingDatabaseAdapter
-from app.adapters.email import IEmailClient, UnisenderGoEmailClient
+from app.adapters.email import UnisenderGoEmailClient
 from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.adapters.sql import SqlExecutor
@@ -21,6 +21,14 @@ from app.controllers.meet_webhook import MeetWebhookController
 from app.controllers.meeting import MeetingController
 from app.controllers.notification import NotificationController
 from app.controllers.telegram import TelegramController
+from app.interfaces.booking import IBookingController, IBookingDatabaseAdapter
+from app.interfaces.chat import IChatClient, IChatController
+from app.interfaces.mail import IEmailClient, IEmailController, IMailWebhookController
+from app.interfaces.meeting import IMeetingController, IMeetWebhookController
+from app.interfaces.notification import INotificationController
+from app.interfaces.sql import ISqlExecutor
+from app.interfaces.telegram import ITelegramController
+from app.interfaces.url_shortener import IUrlShortener
 from app.settings import Settings
 
 
@@ -64,7 +72,7 @@ class AppProvider(Provider):
             yield session
 
     @provide(scope=Scope.REQUEST)
-    def provide_sql_executor(self, session: AsyncSession) -> SqlExecutor:
+    def provide_sql_executor(self, session: AsyncSession) -> ISqlExecutor:
         return SqlExecutor(session)
 
     @provide(scope=Scope.APP)
@@ -72,7 +80,7 @@ class AppProvider(Provider):
         return Redis(connection_pool=ConnectionPool.from_url(settings.redis_url))
 
     @provide(scope=Scope.APP)
-    def provide_mail_webhook_controller(self, bot: Bot, settings: Settings) -> MailWebhookController:
+    def provide_mail_webhook_controller(self, bot: Bot, settings: Settings) -> IMailWebhookController:
         return MailWebhookController(bot=bot, settings=settings)
 
     @provide(scope=Scope.APP)
@@ -84,19 +92,19 @@ class AppProvider(Provider):
         )
 
     @provide(scope=Scope.APP)
-    def provide_email_controller(self, client: IEmailClient, settings: Settings) -> EmailController:
+    def provide_email_controller(self, client: IEmailClient, settings: Settings) -> IEmailController:
         return EmailController(client=client, settings=settings)
 
     @provide(scope=Scope.REQUEST)
-    def provide_db(self, sql: SqlExecutor) -> BookingDatabaseAdapter:
+    def provide_db(self, sql: ISqlExecutor) -> IBookingDatabaseAdapter:
         return BookingDatabaseAdapter(sql)
 
     @provide(scope=Scope.APP)
-    def provide_shortener(self, settings: Settings) -> UrlShortenerAdapter:
+    def provide_shortener(self, settings: Settings) -> IUrlShortener:
         return UrlShortenerAdapter(settings=settings)
 
     @provide(scope=Scope.APP)
-    def provide_chat_adapter(self, settings: Settings) -> GetStreamAdapter:
+    def provide_chat_adapter(self, settings: Settings) -> IChatClient:
         return GetStreamAdapter(
             chat_api_key=settings.chat_api_key,
             chat_api_secret=settings.chat_api_secret,
@@ -104,51 +112,51 @@ class AppProvider(Provider):
         )
 
     @provide(scope=Scope.APP)
-    def provide_chat_controller(self, chat_adapter: GetStreamAdapter) -> ChatController:
+    def provide_chat_controller(self, chat_adapter: IChatClient) -> IChatController:
         return ChatController(client=chat_adapter)
 
     @provide(scope=Scope.REQUEST)
     def provide_meeting_controller(
         self,
-        db: BookingDatabaseAdapter,
-        shortener: UrlShortenerAdapter,
-        chat_controller: ChatController,
+        db: IBookingDatabaseAdapter,
+        shortener: IUrlShortener,
+        chat_controller: IChatController,
         settings: Settings,
-    ) -> MeetingController:
+    ) -> IMeetingController:
         return MeetingController(db=db, shortener=shortener, chat_controller=chat_controller, settings=settings)
 
     @provide(scope=Scope.REQUEST)
     def provide_notification_controller(
         self,
-        db: BookingDatabaseAdapter,
+        db: IBookingDatabaseAdapter,
         bot: Bot,
         settings: Settings,
-        email_controller: EmailController,
-    ) -> NotificationController:
+        email_controller: IEmailController,
+    ) -> INotificationController:
         return NotificationController(db=db, bot=bot, settings=settings, email_controller=email_controller)
 
     @provide(scope=Scope.APP)
-    def provide_telegram_controller(self, bot: Bot, settings: Settings) -> TelegramController:
+    def provide_telegram_controller(self, bot: Bot, settings: Settings) -> ITelegramController:
         return TelegramController(bot=bot, settings=settings)
 
     @provide(scope=Scope.REQUEST)
     def provide_meet_webhook_controller(
         self,
-        db: BookingDatabaseAdapter,
-        notification_controller: NotificationController,
+        db: IBookingDatabaseAdapter,
+        notification_controller: INotificationController,
         redis: Redis,
-    ) -> MeetWebhookController:
+    ) -> IMeetWebhookController:
         return MeetWebhookController(db=db, notification_controller=notification_controller, redis=redis)
 
     @provide(scope=Scope.REQUEST)
     def provide_booking_controller(
         self,
-        db: BookingDatabaseAdapter,
-        shortener: UrlShortenerAdapter,
-        chat_controller: ChatController,
-        meeting_controller: MeetingController,
-        notification_controller: NotificationController,
-    ) -> BookingController:
+        db: IBookingDatabaseAdapter,
+        shortener: IUrlShortener,
+        chat_controller: IChatController,
+        meeting_controller: IMeetingController,
+        notification_controller: INotificationController,
+    ) -> IBookingController:
         return BookingController(
             db=db,
             shortener=shortener,

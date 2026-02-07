@@ -4,9 +4,9 @@ import jwt
 import structlog
 from redis.asyncio import Redis
 
-from app.adapters.db import BookingDatabaseAdapter
-from app.controllers.notification import NotificationController
 from app.dtos import MeetWebhookEventDTO, MeetWebhookEventType, TriggerEvent
+from app.interfaces.booking import IBookingDatabaseAdapter
+from app.interfaces.notification import INotificationController
 
 
 logger = structlog.get_logger(__name__)
@@ -15,8 +15,8 @@ logger = structlog.get_logger(__name__)
 class MeetWebhookController:
     def __init__(
         self,
-        db: BookingDatabaseAdapter,
-        notification_controller: NotificationController,
+        db: IBookingDatabaseAdapter,
+        notification_controller: INotificationController,
         redis: Redis,
     ) -> None:
         self.db = db

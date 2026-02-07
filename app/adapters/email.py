@@ -1,26 +1,13 @@
-from typing import Protocol
-
 import structlog
 
 from app.clients.models import EmailAddress
-from app.clients.unisender_go_client import SendMessageRequest as UnisenderSendMessageRequest
-from app.clients.unisender_go_client import UnisenderGoClient, UnisenderGoError
+from app.clients.unisender_go_client import UnisenderGoClient
+from app.clients.unisender_go_client.exceptions import UnisenderGoError
+from app.clients.unisender_go_client.models.requests import SendMessageRequest
+from app.interfaces.mail import IEmailClient
 
 
 logger = structlog.get_logger(__name__)
-
-
-class IEmailClient(Protocol):
-    async def send_email(
-        self,
-        to_email: str,
-        from_email: str,
-        from_email_name: str | None,
-        reply_to_email: str | None,
-        reply_to_email_name: str | None,
-        subject: str,
-        html_content: str,
-    ) -> None: ...
 
 
 class UnisenderGoEmailClient(IEmailClient):
@@ -44,7 +31,7 @@ class UnisenderGoEmailClient(IEmailClient):
             api_key=self.api_key,
             max_retries=self.max_retries,
         ) as client:
-            request = UnisenderSendMessageRequest(
+            request = SendMessageRequest(
                 to=[EmailAddress(email=to_email)],
                 from_address=EmailAddress(email=from_email, name=from_email_name),
                 reply_address=EmailAddress(email=reply_to_email, name=reply_to_email_name) if reply_to_email else None,

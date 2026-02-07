@@ -1,13 +1,14 @@
 import httpx
 import structlog
 
+from app.interfaces.url_shortener import IUrlShortener
 from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
 
 
-class UrlShortenerAdapter:
+class UrlShortenerAdapter(IUrlShortener):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.base_url = settings.shortner_url

@@ -11,9 +11,9 @@ from aiogram.utils.markdown import hbold
 from aiogram.utils.payload import decode_payload
 from dishka.integrations.aiogram import FromDishka, inject
 
-from app.adapters.shortener import UrlShortenerAdapter
-from app.adapters.sql import SqlExecutor
-from app.controllers.chat import ChatController
+from app.interfaces.chat import IChatController
+from app.interfaces.sql import ISqlExecutor
+from app.interfaces.url_shortener import IUrlShortener
 from app.ioc import telegram_router
 from app.settings import Settings
 
@@ -31,7 +31,7 @@ async def cmd_id(message: Message) -> None:
 async def cmd_start(
     message: Message,
     command: CommandObject,
-    sql: FromDishka[SqlExecutor],
+    sql: FromDishka[ISqlExecutor],
 ) -> None:
     try:
         user_id, telegram_token = decode_payload(command.args).split("@")
@@ -72,9 +72,9 @@ async def hello(message: types.Message) -> None:
 async def meeting_test(
     message: types.Message,
     command: CommandObject,
-    sql: FromDishka[SqlExecutor],
-    chat_controller: FromDishka[ChatController],
-    shortener: FromDishka[UrlShortenerAdapter],
+    sql: FromDishka[ISqlExecutor],
+    chat_controller: FromDishka[IChatController],
+    shortener: FromDishka[IUrlShortener],
     settings: FromDishka[Settings],
 ) -> None:
     args = (command.args or "").split(",")

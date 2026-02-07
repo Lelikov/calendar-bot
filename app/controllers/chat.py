@@ -1,23 +1,12 @@
-from typing import Protocol
-
 import structlog
+
+from app.interfaces.chat import IChatClient, IChatController
 
 
 logger = structlog.get_logger(__name__)
 
 
-class IChatClient(Protocol):
-    async def create_chat(self, *, channel_id: str, organizer_id: str, client_id: str) -> None:
-        pass
-
-    async def delete_chat(self, *, channel_id: str) -> None:
-        pass
-
-    def create_token(self, *, user_id: str, name: str, expires_at: int) -> str:
-        pass
-
-
-class ChatController:
+class ChatController(IChatController):
     def __init__(self, client: IChatClient) -> None:
         self.client = client
 

@@ -4,12 +4,12 @@ from asyncio import Task, create_task
 
 import structlog
 
-from app.adapters.db import BookingDatabaseAdapter
-from app.adapters.shortener import UrlShortenerAdapter
-from app.controllers.chat import ChatController
-from app.controllers.meeting import MeetingController
-from app.controllers.notification import NotificationController
 from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
+from app.interfaces.booking import IBookingDatabaseAdapter
+from app.interfaces.chat import IChatController
+from app.interfaces.meeting import IMeetingController
+from app.interfaces.notification import INotificationController
+from app.interfaces.url_shortener import IUrlShortener
 
 
 logger = structlog.get_logger(__name__)
@@ -18,11 +18,11 @@ logger = structlog.get_logger(__name__)
 class BookingController:
     def __init__(
         self,
-        db: BookingDatabaseAdapter,
-        shortener: UrlShortenerAdapter,
-        chat_controller: ChatController,
-        meeting_controller: MeetingController,
-        notification_controller: NotificationController,
+        db: IBookingDatabaseAdapter,
+        shortener: IUrlShortener,
+        chat_controller: IChatController,
+        meeting_controller: IMeetingController,
+        notification_controller: INotificationController,
     ) -> None:
         self.db = db
         self.shortener = shortener

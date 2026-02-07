@@ -15,8 +15,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.config.logger import setup_logger
-from app.controllers.telegram import TelegramController
 from app.handlers import messages  # noqa: F401
+from app.interfaces.telegram import ITelegramController
 from app.ioc import AppProvider, dp
 from app.routes import root_router
 from app.settings import Settings
@@ -45,7 +45,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("🚀 Starting application")
     engine = await container.get(AsyncEngine)
-    telegram_controller = await container.get(TelegramController)
+    telegram_controller = await container.get(ITelegramController)
     await telegram_controller.start()
     yield
     await engine.dispose()
