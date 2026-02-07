@@ -1,22 +1,20 @@
 import datetime
 from datetime import UTC
 
-from databases import Database
-from databases.interfaces import Record
+from sqlalchemy.engine import RowMapping
 
+from app.adapters.sql import SqlExecutor
 from app.dtos import BookingClientDTO, BookingDTO, UserDTO
 
 
 class BookingDatabaseAdapter:
-    def __init__(self, database: Database) -> None:
-        self.database = database
+    def __init__(self, sql: SqlExecutor) -> None:
+        self.sql = sql
 
     async def get_user_by_email(self, email: str) -> UserDTO | None:
-        row = await self.database.fetch_one(query="SELECT * FROM users WHERE email = :email", values={"email": email})
-
+        row = await self.sql.fetch_one("SELECT * FROM users WHERE email = :email", {"email": email})
         if not row:
             return None
-
         return UserDTO(
             id=row["id"],
             name=row["name"],
@@ -28,14 +26,12 @@ class BookingDatabaseAdapter:
         )
 
     async def get_user_by_id(self, user_id: int) -> UserDTO | None:
-        row = await self.database.fetch_one(
-            query="SELECT * FROM users WHERE id = :user_id",
-            values={"user_id": user_id},
+        row = await self.sql.fetch_one(
+            "SELECT * FROM users WHERE id = :user_id",
+            {"user_id": user_id},
         )
-
         if not row:
             return None
-
         return UserDTO(
             id=row["id"],
             name=row["name"],
@@ -53,7 +49,7 @@ class BookingDatabaseAdapter:
             "AND email = :email "
             "AND telegram_chat_id IS NOT NULL"
         )
-        row = await self.database.fetch_one(query=query, values={"email": email})
+        row = await self.sql.fetch_one(query, {"email": email})
         if row:
             return row["telegram_chat_id"]
         return None
@@ -71,7 +67,7 @@ class BookingDatabaseAdapter:
             LEFT JOIN "Attendee" a ON a."bookingId" = b.id
             WHERE b.uid = :booking_uid
         """
-        row = await self.database.fetch_one(query=query, values={"booking_uid": booking_uid})
+        row = await self.sql.fetch_one(query, {"booking_uid": booking_uid})
         if row:
             return self._fill_booking_dto(row)
         return None
@@ -82,8 +78,8 @@ class BookingDatabaseAdapter:
             SET metadata = COALESCE(metadata, '{}'::jsonb) ||
                            jsonb_build_object('videoCallUrl', CAST(:url AS text))
             WHERE uid = :booking_uid
-                """
-        await self.database.execute(query=query, values={"booking_uid": booking_uid, "url": url})
+        """
+        await self.sql.execute(query, {"booking_uid": booking_uid, "url": url})
 
     async def get_bookings(
         self,
@@ -106,9 +102,9 @@ class BookingDatabaseAdapter:
             AND
             :start_time_to
         """
-        rows = await self.database.fetch_all(
-            query=query,
-            values={
+        rows = await self.sql.fetch_all(
+            query,
+            {
                 "start_time_from": start_time_from.astimezone(UTC).replace(tzinfo=None),
                 "start_time_to": start_time_to.astimezone(UTC).replace(tzinfo=None),
             },
@@ -116,7 +112,7 @@ class BookingDatabaseAdapter:
         return [self._fill_booking_dto(row) for row in rows]
 
     @staticmethod
-    def _fill_booking_dto(row: Record) -> BookingDTO:
+    def _fill_booking_dto(row: RowMapping) -> BookingDTO:
         user = UserDTO(
             id=row["user_id_val"],
             name=row["user_name"],

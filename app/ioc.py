@@ -1,14 +1,18 @@
-from aiogram import Bot
+from collections.abc import AsyncGenerator
+from typing import Any
+
+from aiogram import Bot, Dispatcher, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from databases import Database
 from dishka import Provider, Scope, provide
 from redis.asyncio import ConnectionPool, Redis
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.email import IEmailClient, UnisenderGoEmailClient
 from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
+from app.adapters.sql import SqlExecutor
 from app.controllers.booking import BookingController
 from app.controllers.chat import ChatController
 from app.controllers.email import EmailController
@@ -18,6 +22,11 @@ from app.controllers.meeting import MeetingController
 from app.controllers.notification import NotificationController
 from app.controllers.telegram import TelegramController
 from app.settings import Settings
+
+
+dp = Dispatcher()
+telegram_router = Router(name="telegram")
+dp.include_router(telegram_router)
 
 
 class AppProvider(Provider):
@@ -30,8 +39,33 @@ class AppProvider(Provider):
         return Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     @provide(scope=Scope.APP)
-    def provide_database(self, settings: Settings) -> Database:
-        return Database(settings.postgres_dsn)
+    def provide_db_engine(self, settings: Settings) -> AsyncEngine:
+        return create_async_engine(
+            settings.postgres_dsn,
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+        )
+
+    @provide(scope=Scope.APP)
+    def provide_sessionmaker(self, engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+        return async_sessionmaker(
+            bind=engine,
+            expire_on_commit=False,
+            autoflush=False,
+        )
+
+    @provide(scope=Scope.REQUEST)
+    async def provide_session(
+        self,
+        sessionmaker: async_sessionmaker[AsyncSession],
+    ) -> AsyncGenerator[AsyncSession, Any]:
+        async with sessionmaker() as session:
+            yield session
+
+    @provide(scope=Scope.REQUEST)
+    def provide_sql_executor(self, session: AsyncSession) -> SqlExecutor:
+        return SqlExecutor(session)
 
     @provide(scope=Scope.APP)
     def provide_redis(self, settings: Settings) -> Redis:
@@ -53,9 +87,9 @@ class AppProvider(Provider):
     def provide_email_controller(self, client: IEmailClient, settings: Settings) -> EmailController:
         return EmailController(client=client, settings=settings)
 
-    @provide(scope=Scope.APP)
-    def provide_db(self, database: Database) -> BookingDatabaseAdapter:
-        return BookingDatabaseAdapter(database)
+    @provide(scope=Scope.REQUEST)
+    def provide_db(self, sql: SqlExecutor) -> BookingDatabaseAdapter:
+        return BookingDatabaseAdapter(sql)
 
     @provide(scope=Scope.APP)
     def provide_shortener(self, settings: Settings) -> UrlShortenerAdapter:
@@ -73,7 +107,7 @@ class AppProvider(Provider):
     def provide_chat_controller(self, chat_adapter: GetStreamAdapter) -> ChatController:
         return ChatController(client=chat_adapter)
 
-    @provide(scope=Scope.APP)
+    @provide(scope=Scope.REQUEST)
     def provide_meeting_controller(
         self,
         db: BookingDatabaseAdapter,
@@ -83,7 +117,7 @@ class AppProvider(Provider):
     ) -> MeetingController:
         return MeetingController(db=db, shortener=shortener, chat_controller=chat_controller, settings=settings)
 
-    @provide(scope=Scope.APP)
+    @provide(scope=Scope.REQUEST)
     def provide_notification_controller(
         self,
         db: BookingDatabaseAdapter,
@@ -97,7 +131,7 @@ class AppProvider(Provider):
     def provide_telegram_controller(self, bot: Bot, settings: Settings) -> TelegramController:
         return TelegramController(bot=bot, settings=settings)
 
-    @provide(scope=Scope.APP)
+    @provide(scope=Scope.REQUEST)
     def provide_meet_webhook_controller(
         self,
         db: BookingDatabaseAdapter,

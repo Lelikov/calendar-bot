@@ -9,12 +9,12 @@ from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from aiogram.utils.payload import decode_payload
-from databases import Database
 from dishka.integrations.aiogram import FromDishka, inject
 
 from app.adapters.shortener import UrlShortenerAdapter
-from app.bot import telegram_router
+from app.adapters.sql import SqlExecutor
 from app.controllers.chat import ChatController
+from app.ioc import telegram_router
 from app.settings import Settings
 
 
@@ -31,7 +31,7 @@ async def cmd_id(message: Message) -> None:
 async def cmd_start(
     message: Message,
     command: CommandObject,
-    database: FromDishka[Database],
+    sql: FromDishka[SqlExecutor],
 ) -> None:
     try:
         user_id, telegram_token = decode_payload(command.args).split("@")
@@ -42,7 +42,7 @@ async def cmd_start(
         return None
 
     query = "SELECT name, telegram_chat_id, telegram_token FROM users WHERE locked = FALSE AND id = :id "
-    row = await database.fetch_one(query=query, values={"id": user_id})
+    row = await sql.fetch_one(query, {"id": user_id})
 
     if not row:
         return None
@@ -53,7 +53,7 @@ async def cmd_start(
 
     if row["telegram_token"] == telegram_token:
         query = "UPDATE users SET telegram_chat_id = :telegram_chat_id WHERE id = :id"
-        await database.execute(query=query, values={"id": user_id, "telegram_chat_id": message.chat.id})
+        await sql.execute(query, {"id": user_id, "telegram_chat_id": message.chat.id})
         await message.answer(f"Добро пожаловать, {hbold(row['name'])}")
     return None
 
@@ -72,7 +72,7 @@ async def hello(message: types.Message) -> None:
 async def meeting_test(
     message: types.Message,
     command: CommandObject,
-    database: FromDishka[Database],
+    sql: FromDishka[SqlExecutor],
     chat_controller: FromDishka[ChatController],
     shortener: FromDishka[UrlShortenerAdapter],
     settings: FromDishka[Settings],
@@ -88,7 +88,7 @@ async def meeting_test(
         return None
 
     query = "SELECT name, email FROM users WHERE locked = FALSE AND telegram_chat_id = :telegram_chat_id "
-    row = await database.fetch_one(query=query, values={"telegram_chat_id": message.from_user.id})
+    row = await sql.fetch_one(query, {"telegram_chat_id": message.from_user.id})
 
     if not row:
         return None

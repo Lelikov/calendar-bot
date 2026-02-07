@@ -4,22 +4,28 @@ from logging import getLevelNamesMapping
 
 import sentry_sdk
 import structlog
-from databases import Database
-from dishka.integrations.fastapi import setup_dishka
+from dishka import make_async_container
+from dishka.integrations.aiogram import AiogramProvider
+from dishka.integrations.aiogram import setup_dishka as setup_aiogram_dishka
+from dishka.integrations.fastapi import FastapiProvider, setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.config.logger import setup_logger
 from app.controllers.telegram import TelegramController
-from app.di import container
 from app.handlers import messages  # noqa: F401
+from app.ioc import AppProvider, dp
 from app.routes import root_router
 from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
+
+
+container = make_async_container(AppProvider(), FastapiProvider(), AiogramProvider())
 
 
 @asynccontextmanager
@@ -38,16 +44,16 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     logger.info("🚀 Starting application")
-    database = await container.get(Database)
-    await database.connect()
+    engine = await container.get(AsyncEngine)
     telegram_controller = await container.get(TelegramController)
     await telegram_controller.start()
     yield
-    await database.disconnect()
+    await engine.dispose()
     logger.info("⛔ Stopping application")
 
 
 app = FastAPI(lifespan=lifespan)
+setup_aiogram_dishka(container=container, router=dp, auto_inject=True)
 setup_dishka(container, app)
 
 app.add_middleware(
