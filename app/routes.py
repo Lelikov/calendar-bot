@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import re
 from typing import Annotated
 
 import jwt
@@ -31,6 +32,22 @@ async def validate_signature(signature: str, request: Request) -> bool:
     body = await request.body()
     settings: Settings = request.app.state.dishka_container.get(Settings)
     return signature == hmac.new(settings.cal_signature.encode(), body, hashlib.sha256).hexdigest()
+
+
+def _replace_auth_with_api_key(body: str, api_key: str) -> str:
+    return re.sub(r'("auth"\s*:\s*")[^"]*(")', rf"\g<1>{api_key}\g<2>", body, count=1)
+
+
+async def validate_mail_signature(request: Request) -> bool:
+    body = (await request.body()).decode("utf-8")
+    auth_match = re.search(r'"auth"\s*:\s*"([^"]*)"', body)
+    if not auth_match:
+        return False
+
+    auth = auth_match.group(1)
+    body_with_api_key = _replace_auth_with_api_key(body=body, api_key="6bhxa1rkttoey34ff6sdrcq4yczawipmby443qfy")
+    expected_signature = hashlib.md5(body_with_api_key.encode("utf-8")).hexdigest()  # noqa: S324
+    return hmac.compare_digest(auth, expected_signature)
 
 
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
@@ -68,11 +85,15 @@ async def booking(
     return None
 
 
-@root_router.post("/mail/webhook")
+@root_router.post("/webhook/mail")
 async def mail_webhook(
+    request: Request,
     event: MailWebhookEvent,
     mail_controller: FromDishka[IMailWebhookController],
 ) -> None:
+    if not await validate_mail_signature(request=request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
+
     logger.info(event)
     await mail_controller.handle_webhook(event.to_dto())
     return None

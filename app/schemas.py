@@ -8,9 +8,11 @@ from app.dtos import (
     BookingEventDTO,
     BookingEventOrganizerDTO,
     BookingEventPayloadDTO,
+    MailWebhookDeliveryInfoDTO,
+    MailWebhookEventDataDTO,
     MailWebhookEventDTO,
-    MailWebhookMessageDTO,
-    MailWebhookPayloadDTO,
+    MailWebhookEventsByUserDTO,
+    MailWebhookUserEventDTO,
     MeetWebhookEventDTO,
     TriggerEvent,
 )
@@ -95,66 +97,64 @@ class BookingEvent(BaseCalComModel):
         )
 
 
-class MailWebhookMessage(BaseModel):
-    direction: str
-    from_email: str = Field(alias="from")
-    id: int
-    message_id: str
-    spam_status: str
-    subject: str
-    tag: str | None
-    timestamp: float
-    to: str
-    token: str
+class MailWebhookDeliveryInfo(BaseModel):
+    delivery_status: str
+    destination_response: str
 
-    def to_dto(self) -> MailWebhookMessageDTO:
-        return MailWebhookMessageDTO(
-            direction=self.direction,
-            from_email=self.from_email,
-            id=self.id,
-            message_id=self.message_id,
-            spam_status=self.spam_status,
-            subject=self.subject,
-            tag=self.tag,
-            timestamp=self.timestamp,
-            to=self.to,
-            token=self.token,
+    def to_dto(self) -> MailWebhookDeliveryInfoDTO:
+        return MailWebhookDeliveryInfoDTO(
+            delivery_status=self.delivery_status,
+            destination_response=self.destination_response,
         )
 
 
-class MailWebhookPayload(BaseModel):
-    details: str
-    message: MailWebhookMessage
-    output: str
-    sent_with_ssl: bool
+class MailWebhookEventData(BaseModel):
+    job_id: str
+    email: str
     status: str
-    time: float
-    timestamp: float
+    event_time: str
+    delivery_info: MailWebhookDeliveryInfo
 
-    def to_dto(self) -> MailWebhookPayloadDTO:
-        return MailWebhookPayloadDTO(
-            details=self.details,
-            message=self.message.to_dto(),
-            output=self.output,
-            sent_with_ssl=self.sent_with_ssl,
+    def to_dto(self) -> MailWebhookEventDataDTO:
+        return MailWebhookEventDataDTO(
+            job_id=self.job_id,
+            email=self.email,
             status=self.status,
-            time=self.time,
-            timestamp=self.timestamp,
+            event_time=self.event_time,
+            delivery_info=self.delivery_info.to_dto(),
+        )
+
+
+class MailWebhookUserEvent(BaseModel):
+    event_name: str
+    event_data: MailWebhookEventData
+
+    def to_dto(self) -> MailWebhookUserEventDTO:
+        return MailWebhookUserEventDTO(
+            event_name=self.event_name,
+            event_data=self.event_data.to_dto(),
+        )
+
+
+class MailWebhookEventsByUser(BaseModel):
+    user_id: int
+    events: list[MailWebhookUserEvent]
+
+    def to_dto(self) -> MailWebhookEventsByUserDTO:
+        return MailWebhookEventsByUserDTO(
+            user_id=self.user_id,
+            events=[event.to_dto() for event in self.events],
         )
 
 
 class MailWebhookEvent(BaseModel):
-    event: str
-    payload: MailWebhookPayload
-    timestamp: float
-    uuid: str
+    auth: str
+    events_by_user: list[MailWebhookEventsByUser]
 
     def to_dto(self) -> MailWebhookEventDTO:
         return MailWebhookEventDTO(
-            event=self.event,
-            payload=self.payload.to_dto(),
-            timestamp=self.timestamp,
-            uuid=self.uuid,
+            auth=self.auth,
+            events_by_user=[event.to_dto() for event in self.events_by_user],
         )
 
 

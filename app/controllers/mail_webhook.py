@@ -8,7 +8,7 @@ from app.settings import Settings
 
 logger = structlog.get_logger(__name__)
 
-processed_mail_webhook_ids: set[int] = set()
+processed_mail_webhook_ids: set[str] = set()
 
 
 class MailWebhookController:
@@ -17,24 +17,31 @@ class MailWebhookController:
         self.settings = settings
 
     async def handle_webhook(self, event: MailWebhookEventDTO) -> None:
-        if event.payload.message.id in processed_mail_webhook_ids:
-            return None
-        processed_mail_webhook_ids.add(event.payload.message.id)
-
-        text = (
-            f"Mail webhook event:\n\n"
-            f"<b>To:</b> {event.payload.message.to}\n"
-            f"<b>Status:</b> {event.payload.status}\n"
-            f"<b>Output:</b> {event.payload.output}"
-        )
-
-        for chat_id in self.settings.admin_chat_ids:
-            try:
-                await self.bot.send_message(
-                    chat_id=chat_id,
-                    text=text,
-                    link_preview_options=LinkPreviewOptions(is_disabled=True),
+        for user_events in event.events_by_user:
+            for user_event in user_events.events:
+                deduplicate_key = (
+                    f"{user_events.user_id}:{user_event.event_data.job_id}:"
+                    f"{user_event.event_data.status}:{user_event.event_data.event_time}"
                 )
-            except Exception:
-                logger.exception("Failed to send mail webhook notification", chat_id=chat_id)
+                if deduplicate_key in processed_mail_webhook_ids:
+                    continue
+                processed_mail_webhook_ids.add(deduplicate_key)
+
+                text = (
+                    f"Mail webhook event:\n\n"
+                    f"<b>Email:</b> {user_event.event_data.email}\n"
+                    f"<b>Status:</b> {user_event.event_data.status}\n"
+                    f"<b>Delivery status:</b> {user_event.event_data.delivery_info.delivery_status}\n"
+                    f"<b>Response:</b> {user_event.event_data.delivery_info.destination_response}"
+                )
+
+                for chat_id in self.settings.admin_chat_ids:
+                    try:
+                        await self.bot.send_message(
+                            chat_id=chat_id,
+                            text=text,
+                            link_preview_options=LinkPreviewOptions(is_disabled=True),
+                        )
+                    except Exception:
+                        logger.exception("Failed to send mail webhook notification", chat_id=chat_id)
         return None

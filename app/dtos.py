@@ -73,36 +73,36 @@ class UserDTO:
 
 
 @dataclass(frozen=True, slots=True)
-class MailWebhookMessageDTO:
-    direction: str
-    from_email: str
-    id: int
-    message_id: str
-    spam_status: str
-    subject: str
-    timestamp: float
-    to: str
-    token: str
-    tag: str | None = None
+class MailWebhookDeliveryInfoDTO:
+    delivery_status: str
+    destination_response: str
 
 
 @dataclass(frozen=True, slots=True)
-class MailWebhookPayloadDTO:
-    details: str
-    message: MailWebhookMessageDTO
-    output: str
-    sent_with_ssl: bool
+class MailWebhookEventDataDTO:
+    job_id: str
+    email: str
     status: str
-    time: float
-    timestamp: float
+    event_time: str
+    delivery_info: MailWebhookDeliveryInfoDTO
+
+
+@dataclass(frozen=True, slots=True)
+class MailWebhookUserEventDTO:
+    event_name: str
+    event_data: MailWebhookEventDataDTO
+
+
+@dataclass(frozen=True, slots=True)
+class MailWebhookEventsByUserDTO:
+    user_id: int
+    events: list[MailWebhookUserEventDTO]
 
 
 @dataclass(frozen=True, slots=True)
 class MailWebhookEventDTO:
-    event: str
-    payload: MailWebhookPayloadDTO
-    timestamp: float
-    uuid: str
+    auth: str
+    events_by_user: list[MailWebhookEventsByUserDTO]
 
 
 @dataclass(frozen=True, slots=True)
