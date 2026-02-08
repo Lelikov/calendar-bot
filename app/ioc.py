@@ -18,7 +18,7 @@ from app.controllers.cache import CacheController
 from app.controllers.chat import ChatController
 from app.controllers.email import EmailController
 from app.controllers.mail_webhook import MailWebhookController
-from app.controllers.meet_notification_state import MeetNotificationStateController
+from app.controllers.meet_notification_state import NotificationStateController
 from app.controllers.meet_webhook import MeetWebhookController
 from app.controllers.meeting import MeetingController
 from app.controllers.notification import NotificationController
@@ -27,7 +27,7 @@ from app.interfaces.booking import IBookingController, IBookingDatabaseAdapter
 from app.interfaces.cache import ICacheController
 from app.interfaces.chat import IChatClient, IChatController
 from app.interfaces.mail import IEmailClient, IEmailController, IMailWebhookController
-from app.interfaces.meeting import IMeetingController, IMeetNotificationStateController, IMeetWebhookController
+from app.interfaces.meeting import IMeetingController, IMeetWebhookController, INotificationStateController
 from app.interfaces.notification import INotificationController
 from app.interfaces.sql import ISqlExecutor
 from app.interfaces.telegram import ITelegramController
@@ -147,23 +147,23 @@ class AppProvider(Provider):
         return TelegramController(bot=bot, settings=settings)
 
     @provide(scope=Scope.APP)
-    def provide_meet_notification_state_controller(
+    def provide_notification_state_controller(
         self,
         cache_controller: ICacheController,
-    ) -> IMeetNotificationStateController:
-        return MeetNotificationStateController(cache_controller=cache_controller)
+    ) -> INotificationStateController:
+        return NotificationStateController(cache_controller=cache_controller)
 
     @provide(scope=Scope.REQUEST)
     def provide_meet_webhook_controller(
         self,
         db: IBookingDatabaseAdapter,
         notification_controller: INotificationController,
-        meet_notification_state_controller: IMeetNotificationStateController,
+        notification_state_controller: INotificationStateController,
     ) -> IMeetWebhookController:
         return MeetWebhookController(
             db=db,
             notification_controller=notification_controller,
-            meet_notification_state_controller=meet_notification_state_controller,
+            notification_state_controller=notification_state_controller,
         )
 
     @provide(scope=Scope.REQUEST)
@@ -174,6 +174,7 @@ class AppProvider(Provider):
         chat_controller: IChatController,
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
+        notification_state_controller: INotificationStateController,
     ) -> IBookingController:
         return BookingController(
             db=db,
@@ -181,4 +182,5 @@ class AppProvider(Provider):
             chat_controller=chat_controller,
             meeting_controller=meeting_controller,
             notification_controller=notification_controller,
+            notification_state_controller=notification_state_controller,
         )

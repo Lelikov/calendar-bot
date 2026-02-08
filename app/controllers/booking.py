@@ -7,12 +7,16 @@ import structlog
 from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
 from app.interfaces.booking import IBookingDatabaseAdapter
 from app.interfaces.chat import IChatController
-from app.interfaces.meeting import IMeetingController
+from app.interfaces.meeting import IMeetingController, INotificationStateController
 from app.interfaces.notification import INotificationController
 from app.interfaces.url_shortener import IUrlShortener
 
 
 logger = structlog.get_logger(__name__)
+
+
+BOOKING_REMINDER_NOTIFICATION_KEY = "booking_reminder_notified"
+BOOKING_REMINDER_TTL_SECONDS = 60 * 60 * 24
 
 
 class BookingController:
@@ -23,15 +27,16 @@ class BookingController:
         chat_controller: IChatController,
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
+        notification_state_controller: INotificationStateController,
     ) -> None:
         self.db = db
         self.shortener = shortener
         self.chat_controller = chat_controller
         self.meeting_controller = meeting_controller
         self.notification_controller = notification_controller
+        self.notification_state_controller = notification_state_controller
         self.background_tasks: set[Task] = set()
         self.client_meeting_prefix = "client_"
-        self.reminder_sent: set[str] = set()
 
     async def handle_booking(self, booking_event: BookingEventDTO) -> None:
         task = create_task(self._background_processing(booking_event))
@@ -54,9 +59,12 @@ class BookingController:
         )
         count_sent_reminders = 0
         for booking in bookings:
-            if booking.uid in self.reminder_sent:
+            if await self.notification_state_controller.was_notified(
+                room=f"{booking.uid}{booking.client.email}",
+                key=BOOKING_REMINDER_NOTIFICATION_KEY,
+            ):
                 continue
-            self.reminder_sent.add(booking.uid)
+
             if "cloud" in booking.metadata:
                 meeting_url = json.loads(booking.metadata).get("videoCallUrl")
             else:
@@ -68,6 +76,11 @@ class BookingController:
                 booking=booking,
                 meeting_url=meeting_url,
                 trigger_event=TriggerEvent.BOOKING_REMINDER,
+            )
+            await self.notification_state_controller.mark_notified(
+                room=f"{booking.uid}{booking.client.email}",
+                ttl_seconds=BOOKING_REMINDER_TTL_SECONDS,
+                key=BOOKING_REMINDER_NOTIFICATION_KEY,
             )
             count_sent_reminders += 1
         return count_sent_reminders

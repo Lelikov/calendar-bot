@@ -5,11 +5,14 @@ import structlog
 
 from app.dtos import MeetWebhookEventDTO, MeetWebhookEventType, TriggerEvent
 from app.interfaces.booking import IBookingDatabaseAdapter
-from app.interfaces.meeting import IMeetNotificationStateController
+from app.interfaces.meeting import INotificationStateController
 from app.interfaces.notification import INotificationController
 
 
 logger = structlog.get_logger(__name__)
+
+CLIENT_ENTER_NOTIFICATION_KEY = "client_enter_notified"
+BOOKING_REMINDER_TTL_SECONDS = 60 * 60 * 2
 
 
 class MeetWebhookController:
@@ -17,18 +20,18 @@ class MeetWebhookController:
         self,
         db: IBookingDatabaseAdapter,
         notification_controller: INotificationController,
-        meet_notification_state_controller: IMeetNotificationStateController,
+        notification_state_controller: INotificationStateController,
     ) -> None:
         self.db = db
         self.notification_controller = notification_controller
-        self.meet_notification_state_controller = meet_notification_state_controller
+        self.notification_state_controller = notification_state_controller
 
     async def handle_webhook(self, event: MeetWebhookEventDTO) -> None:
         claims = jwt.decode(event.jwt.encode(), options={"verify_signature": False})
         role = claims.get("context", {}).get("user", {}).get("role")
         room = claims["room"]
         if event.event == MeetWebhookEventType.VIDEO_CONFERENCE_JOINED and role == "client":
-            if await self.meet_notification_state_controller.was_notified(room):
+            if await self.notification_state_controller.was_notified(room=room, key=CLIENT_ENTER_NOTIFICATION_KEY):
                 logger.info(f"Notification already sent for room {room}")
                 return None
 
@@ -42,5 +45,9 @@ class MeetWebhookController:
                 user=booking.user,
                 meeting_url=json.loads(booking.metadata).get("videoCallUrl"),
             )
-            await self.meet_notification_state_controller.mark_notified(room=room, ttl_seconds=60 * 60 * 2)
+            await self.notification_state_controller.mark_notified(
+                room=room,
+                key=CLIENT_ENTER_NOTIFICATION_KEY,
+                ttl_seconds=BOOKING_REMINDER_TTL_SECONDS,
+            )
         return None
