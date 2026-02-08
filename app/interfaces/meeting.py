@@ -30,3 +30,9 @@ class IMeetingController(Protocol):
 
 class IMeetWebhookController(Protocol):
     async def handle_webhook(self, event: MeetWebhookEventDTO) -> None: ...
+
+
+class IMeetNotificationStateController(Protocol):
+    async def was_notified(self, room: str) -> bool: ...
+
+    async def mark_notified(self, room: str, ttl_seconds: int) -> None: ...

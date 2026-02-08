@@ -14,17 +14,20 @@ from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.adapters.sql import SqlExecutor
 from app.controllers.booking import BookingController
+from app.controllers.cache import CacheController
 from app.controllers.chat import ChatController
 from app.controllers.email import EmailController
 from app.controllers.mail_webhook import MailWebhookController
+from app.controllers.meet_notification_state import MeetNotificationStateController
 from app.controllers.meet_webhook import MeetWebhookController
 from app.controllers.meeting import MeetingController
 from app.controllers.notification import NotificationController
 from app.controllers.telegram import TelegramController
 from app.interfaces.booking import IBookingController, IBookingDatabaseAdapter
+from app.interfaces.cache import ICacheController
 from app.interfaces.chat import IChatClient, IChatController
 from app.interfaces.mail import IEmailClient, IEmailController, IMailWebhookController
-from app.interfaces.meeting import IMeetingController, IMeetWebhookController
+from app.interfaces.meeting import IMeetingController, IMeetNotificationStateController, IMeetWebhookController
 from app.interfaces.notification import INotificationController
 from app.interfaces.sql import ISqlExecutor
 from app.interfaces.telegram import ITelegramController
@@ -76,8 +79,12 @@ class AppProvider(Provider):
         return SqlExecutor(session)
 
     @provide(scope=Scope.APP)
-    def provide_redis(self, settings: Settings) -> Redis:
+    def provide_cache_client(self, settings: Settings) -> Redis:
         return Redis(connection_pool=ConnectionPool.from_url(settings.redis_url))
+
+    @provide(scope=Scope.APP)
+    def provide_cache_controller(self, cache_client: Redis) -> ICacheController:
+        return CacheController(client=cache_client)
 
     @provide(scope=Scope.APP)
     def provide_mail_webhook_controller(self, bot: Bot, settings: Settings) -> IMailWebhookController:
@@ -139,14 +146,25 @@ class AppProvider(Provider):
     def provide_telegram_controller(self, bot: Bot, settings: Settings) -> ITelegramController:
         return TelegramController(bot=bot, settings=settings)
 
+    @provide(scope=Scope.APP)
+    def provide_meet_notification_state_controller(
+        self,
+        cache_controller: ICacheController,
+    ) -> IMeetNotificationStateController:
+        return MeetNotificationStateController(cache_controller=cache_controller)
+
     @provide(scope=Scope.REQUEST)
     def provide_meet_webhook_controller(
         self,
         db: IBookingDatabaseAdapter,
         notification_controller: INotificationController,
-        redis: Redis,
+        meet_notification_state_controller: IMeetNotificationStateController,
     ) -> IMeetWebhookController:
-        return MeetWebhookController(db=db, notification_controller=notification_controller, redis=redis)
+        return MeetWebhookController(
+            db=db,
+            notification_controller=notification_controller,
+            meet_notification_state_controller=meet_notification_state_controller,
+        )
 
     @provide(scope=Scope.REQUEST)
     def provide_booking_controller(
