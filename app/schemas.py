@@ -27,6 +27,7 @@ class BaseCalComModel(BaseModel):
 class BookingReminderBody(BaseModel):
     start_time_from_shift: int = Field(default=23)
     start_time_to_shift: int = Field(default=24)
+    booking_uid: str | None = None
 
 
 class BookingEventAttendee(BaseCalComModel):

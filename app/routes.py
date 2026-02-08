@@ -64,6 +64,7 @@ async def booking_reminder(
     count_sent_reminders = await booking_controller.handle_booking_reminder(
         start_time_from_shift=body.start_time_from_shift,
         start_time_to_shift=body.start_time_to_shift,
+        booking_uid=body.booking_uid,
     )
     logger.info(f"Sent {count_sent_reminders} reminders")
     return count_sent_reminders

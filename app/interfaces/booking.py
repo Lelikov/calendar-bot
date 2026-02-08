@@ -29,4 +29,9 @@ class IBookingDatabaseAdapter(Protocol):
 class IBookingController(Protocol):
     async def handle_booking(self, booking_event: BookingEventDTO) -> None: ...
 
-    async def handle_booking_reminder(self, start_time_from_shift: int, start_time_to_shift: int) -> int: ...
+    async def handle_booking_reminder(
+        self,
+        start_time_from_shift: int,
+        start_time_to_shift: int,
+        booking_uid: str,
+    ) -> int: ...
