@@ -39,11 +39,13 @@ class MeetWebhookController:
             if not booking:
                 return None
 
+            metadata = json.loads(booking.metadata) if isinstance(booking.metadata, str) else booking.metadata
+
             await self.notification_controller.notify_organizer_telegram(
                 booking=booking,
                 trigger_event=TriggerEvent.MEET_CLIENT_JOINED,
                 user=booking.user,
-                meeting_url=json.loads(booking.metadata).get("videoCallUrl"),
+                meeting_url=metadata.get("videoCallUrl"),
             )
             await self.notification_state_controller.mark_notified(
                 room=room,

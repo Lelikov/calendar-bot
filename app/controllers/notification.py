@@ -34,7 +34,7 @@ class NotificationController:
             TriggerEvent.BOOKING_CREATED: ("client/confirmation.html", "✅Новая запись"),
             TriggerEvent.BOOKING_RESCHEDULED: ("client/reschedule.html", "↻Встреча перенесена"),
             TriggerEvent.BOOKING_CANCELLED: ("client/cancellation.html", "❌Ваша встреча отменена"),
-            TriggerEvent.BOOKING_REMINDER: ("client/reminder.html", "📝Напоминание о встречи с волонтером"),
+            TriggerEvent.BOOKING_REMINDER: ("client/reminder.html", "📝Напоминание о встрече с волонтером"),
         },
     }
 
@@ -144,12 +144,15 @@ class NotificationController:
         )
 
         if notification_text:
-            logger.info("Sending notification to organizer", email=user.email, trigger_event=trigger_event)
-            await self.bot.send_message(
-                chat_id=organizer_chat_id,
-                text=notification_text,
-                link_preview_options=LinkPreviewOptions(is_disabled=True),
-            )
+            logger.info("Sending telegram notification to organizer", email=user.email, trigger_event=trigger_event)
+            try:
+                await self.bot.send_message(
+                    chat_id=organizer_chat_id,
+                    text=notification_text,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True),
+                )
+            except Exception:
+                logger.exception("Error sending telegram notification", email=user.email, trigger_event=trigger_event)
 
     def _prepare_email_context(
         self,

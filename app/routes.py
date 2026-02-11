@@ -1,13 +1,16 @@
 import hashlib
 import hmac
 import re
+from asyncio import Task, create_task
+from collections.abc import Awaitable
 from typing import Annotated
 
 import jwt
 import structlog
 from aiogram import Bot, types
+from dishka import Scope
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, FastAPI, Header, HTTPException, status
 from starlette.requests import Request
 
 from app.interfaces.booking import IBookingController
@@ -19,6 +22,7 @@ from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
+background_tasks: set[Task[Awaitable[None] | None]] = set()
 
 root_router = APIRouter(
     prefix="",
@@ -50,6 +54,15 @@ async def validate_mail_signature(request: Request) -> bool:
     return hmac.compare_digest(auth, expected_signature)
 
 
+async def _process_booking_event_in_new_scope(app: FastAPI, booking_event: BookingEvent) -> None:
+    try:
+        async with app.state.dishka_container({}, scope=Scope.REQUEST) as request_container:
+            booking_controller = await request_container.get(IBookingController)
+            await booking_controller.handle_booking(booking_event.to_dto())
+    except Exception:
+        logger.exception("Error while processing booking event in background", event=booking_event.model_dump())
+
+
 @root_router.post("/booking/reminder", status_code=status.HTTP_201_CREATED)
 async def booking_reminder(
     booking_controller: FromDishka[IBookingController],
@@ -76,13 +89,15 @@ async def booking(
     request: Request,
     signature: Annotated[str | None, Header(alias="x-cal-signature-256")],
     settings: FromDishka[Settings],
-    booking_controller: FromDishka[IBookingController],
 ) -> None:
     if not settings.debug and not await validate_signature(signature=signature, request=request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
     request_body = await request.json()
     logger.info(f"Received booking event {request_body}")
-    await booking_controller.handle_booking(booking_event.to_dto())
+
+    task = create_task(_process_booking_event_in_new_scope(app=request.app, booking_event=booking_event))
+    background_tasks.add(task)
+    task.add_done_callback(background_tasks.discard)
     return None
 
 
