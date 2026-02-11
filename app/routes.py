@@ -101,6 +101,11 @@ async def booking(
     return None
 
 
+@root_router.get("/webhook/mail")
+async def mail_webhook_healthcheck() -> None:
+    return None
+
+
 @root_router.post("/webhook/mail")
 async def mail_webhook(
     request: Request,
