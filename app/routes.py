@@ -34,7 +34,7 @@ root_router = APIRouter(
 
 async def validate_signature(signature: str, request: Request) -> bool:
     body = await request.body()
-    settings: Settings = request.app.state.dishka_container.get(Settings)
+    settings: Settings = await request.app.state.dishka_container.get(Settings)
     return signature == hmac.new(settings.cal_signature.encode(), body, hashlib.sha256).hexdigest()
 
 
