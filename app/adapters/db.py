@@ -3,13 +3,54 @@ from datetime import UTC
 
 from sqlalchemy.engine import RowMapping
 
-from app.dtos import BookingClientDTO, BookingDTO, UserDTO
+from app.dtos import AttendeeBookingDTO, BookingClientDTO, BookingDTO, UserDTO
 from app.interfaces.sql import ISqlExecutor
 
 
 class BookingDatabaseAdapter:
     def __init__(self, sql: ISqlExecutor) -> None:
         self.sql = sql
+
+    @staticmethod
+    def _normalize_email(email: str) -> str:
+        local_part, _, domain = email.strip().lower().partition("@")
+        normalized_local = local_part.split("+", maxsplit=1)[0]
+        return f"{normalized_local}@{domain}" if domain else normalized_local
+
+    async def get_attendee_bookings_by_email(self, *, email: str) -> list[AttendeeBookingDTO]:
+        normalized_email = self._normalize_email(email)
+        query = """
+                SELECT b.id,
+                       b.uid,
+                       b.status,
+                       b."startTime",
+                       b."endTime",
+                       a.name,
+                       a.email
+                FROM public."Booking" b
+                         LEFT JOIN "Attendee" a ON a."bookingId" = b.id
+                WHERE regexp_replace(lower(a.email), '[+][^@]*@', '@') = :normalized_email
+                """
+        rows = await self.sql.fetch_all(query, {"normalized_email": normalized_email})
+        return [
+            AttendeeBookingDTO(
+                booking_id=row["id"],
+                booking_uid=row["uid"],
+                name=row["name"],
+                email=row["email"],
+                start_time=row["startTime"].replace(tzinfo=UTC),
+                end_time=row["endTime"].replace(tzinfo=UTC),
+                status=row["status"],
+            )
+            for row in rows
+        ]
+
+    async def delete_booking_and_attendee_by_booking_id(self, *, booking_id: int) -> None:
+        statements = [
+            ('DELETE FROM "Attendee" WHERE "bookingId" = :booking_id', {"booking_id": booking_id}),
+            ('DELETE FROM public."Booking" WHERE id = :booking_id', {"booking_id": booking_id}),
+        ]
+        await self.sql.execute_in_transaction(statements)
 
     async def get_user_by_email(self, email: str) -> UserDTO | None:
         row = await self.sql.fetch_one("SELECT * FROM users WHERE email = :email", {"email": email})

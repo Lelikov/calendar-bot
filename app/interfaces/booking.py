@@ -5,11 +5,15 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     import datetime
 
-    from app.dtos import BookingDTO, BookingEventDTO, UserDTO
+    from app.dtos import AttendeeBookingDTO, BookingDTO, BookingEventDTO, UserDTO
 
 
 class IBookingDatabaseAdapter(Protocol):
     async def get_user_by_email(self, email: str) -> UserDTO | None: ...
+
+    async def get_attendee_bookings_by_email(self, *, email: str) -> list[AttendeeBookingDTO]: ...
+
+    async def delete_booking_and_attendee_by_booking_id(self, *, booking_id: int) -> None: ...
 
     async def get_user_by_id(self, user_id: int) -> UserDTO | None: ...
 

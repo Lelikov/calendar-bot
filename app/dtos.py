@@ -105,13 +105,6 @@ class MailWebhookEventDTO:
     events_by_user: list[MailWebhookEventsByUserDTO]
 
 
-@dataclass(frozen=True, slots=True)
-class BookingAttendeeDTO:
-    name: str
-    email: str
-    time_zone: str
-
-
 class ResponseDTO(TypedDict):
     name: str
     email: str
@@ -173,3 +166,14 @@ class MeetWebhookEventType(str, Enum):
 class MeetWebhookEventDTO:
     event: MeetWebhookEventType
     jwt: str
+
+
+@dataclass(slots=True, frozen=True)
+class AttendeeBookingDTO:
+    booking_id: int
+    booking_uid: str
+    name: str
+    email: str
+    start_time: datetime
+    end_time: datetime
+    status: str

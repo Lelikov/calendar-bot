@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
+    <tr>
+        <td align="center">
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">
+                Ваша запись не может быть подтверждена</h2>
+            <p style="margin: 0; color: #4b5563; font-size: 16px; font-family: inherit;">
+                Здравствуйте, {{ client_name }}.
+            </p>
+        </td>
+    </tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+       style="background-color: #fff7ed; border-radius: 12px; border: 1px solid #fed7aa; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 24px;">
+            {% if has_active_booking %}
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Запись в «Живой» подтверждается только на одну консультацию за раз.
+                Следующую консультацию можно забронировать после того, как состоится текущая встреча.
+            </p>
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Ваша ближайшая консультация запланирована на: <strong>{{ active_booking_start }}</strong>.
+            </p>
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Это правило помогает нам справедливо распределять бесплатные слоты и дать возможность поддержки как
+                можно большему числу людей.
+                Подробнее — в <a href="{{ offer_url }}" style="color: #9a3412;"><strong>правилах проекта.</strong></a>
+            </p>
+            {% else %}
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Согласно <a href="{{ offer_url }}" style="color: #9a3412;"><strong>оферте</strong></a>,
+                перерыв между консультациями должен быть не менее 7 календарных дней.
+                Количество консультаций в месяц не должно превышать 2,
+                в год — не более 10 консультаций на одного благополучателя.
+            </p>
+            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Вы можете записаться только на <strong>{{ available_from }}</strong> и далее.
+            </p>
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+{% if previous_meeting_dates and not has_active_booking %}
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+       style="background-color: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px;">
+    <tr>
+        <td style="padding: 24px;">
+            <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; font-family: inherit;">
+                <strong>Список ваших предыдущих встреч:</strong>
+            </p>
+            <ul style="margin: 0; padding-left: 20px; color: #4b5563; font-size: 15px; line-height: 1.6; font-family: inherit;">
+                {% for meeting_date in previous_meeting_dates %}
+                <li>{{ meeting_date }}</li>
+                {% endfor %}
+            </ul>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+        <td align="center">
+            <p style="margin: 0; color: #4b5563; font-size: 14px; font-family: inherit;">
+                Если у вас возникли вопросы, напишите нам: <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+            </p>
+        </td>
+    </tr>
+</table>
+{% endblock %}

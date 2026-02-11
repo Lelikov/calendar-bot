@@ -280,3 +280,41 @@ class NotificationController:
             trigger_event=trigger_event,
             meeting_url=meeting_url,
         )
+
+    async def notify_client_booking_rejected(
+        self,
+        *,
+        booking: BookingDTO,
+        available_from: datetime,
+        has_active_booking: bool,
+        previous_meeting_dates: list[datetime],
+        active_booking_start: datetime | None,
+    ) -> None:
+        try:
+            template = self.jinja_env.get_template("client/booking_rejected.html")
+            available_from_text = self._get_participant_time(booking.client.time_zone, available_from)
+            active_booking_start_text = self._get_participant_time(booking.client.time_zone, active_booking_start)
+            previous_meeting_dates_text = [
+                start_time.astimezone(pytz.timezone(booking.client.time_zone)).strftime("%d-%m-%Y")
+                for start_time in previous_meeting_dates
+            ]
+            html_content = template.render(
+                client_name=booking.client.name,
+                available_from=available_from_text,
+                has_active_booking=has_active_booking,
+                active_booking_start=active_booking_start_text,
+                previous_meeting_dates=previous_meeting_dates_text,
+                offer_url=self.settings.offer_url,
+                support_email=self.settings.support_email,
+            )
+            await self.email_controller.send_email(
+                to_email=booking.client.email,
+                subject="⚠️ Ваша запись не может быть подтверждена",
+                html_content=html_content,
+            )
+        except Exception:
+            logger.exception(
+                "Error sending rejected booking notification to client",
+                booking_uid=booking.uid,
+                client_email=booking.client.email,
+            )

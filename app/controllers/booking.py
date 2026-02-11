@@ -2,7 +2,7 @@ import datetime
 
 import structlog
 
-from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
+from app.dtos import AttendeeBookingDTO, BookingDTO, BookingEventDTO, TriggerEvent
 from app.interfaces.booking import IBookingDatabaseAdapter
 from app.interfaces.chat import IChatController
 from app.interfaces.meeting import IMeetingController, INotificationStateController
@@ -15,6 +15,10 @@ logger = structlog.get_logger(__name__)
 
 BOOKING_REMINDER_NOTIFICATION_KEY = "booking_reminder_notified"
 BOOKING_REMINDER_TTL_SECONDS = 60 * 60 * 24
+MIN_DAYS_BETWEEN_BOOKINGS = 7
+MAX_BOOKINGS_PER_MONTH = 2
+MAX_BOOKINGS_PER_YEAR = 10
+INACTIVE_BOOKING_STATUSES = {"cancelled", "rejected"}
 
 
 class BookingController:
@@ -132,8 +136,134 @@ class BookingController:
         )
         return None
 
+    async def _validate_booking_constraints_on_create(self, booking_uid: str) -> bool:
+        booking = await self.db.get_booking(booking_uid)
+        if not booking:
+            logger.warning("Booking not found while validating constraints", uid=booking_uid)
+            return False
+
+        attendee_bookings = await self.db.get_attendee_bookings_by_email(email=booking.client.email)
+        validation_result = self._analyze_booking_constraints(
+            booking=booking,
+            attendee_bookings=attendee_bookings,
+        )
+        if validation_result["is_allowed"]:
+            return True
+
+        previous_meeting_dates = sorted(
+            [
+                attendee_booking.start_time
+                for attendee_booking in attendee_bookings
+                if attendee_booking.booking_uid != booking.uid
+                and attendee_booking.start_time.date() <= booking.start_time.date()
+            ],
+        )
+
+        await self.notification_controller.notify_client_booking_rejected(
+            booking=booking,
+            available_from=validation_result["available_from"],
+            has_active_booking=validation_result["has_active_booking"],
+            previous_meeting_dates=previous_meeting_dates,
+            active_booking_start=validation_result["active_booking_start"],
+        )
+
+        await self.db.delete_booking_and_attendee_by_booking_id(booking_id=booking.id)
+        logger.warning(
+            "Booking was deleted due to booking rules violation",
+            uid=booking.uid,
+            booking_id=booking.id,
+            client_email=booking.client.email,
+        )
+        return False
+
+    @staticmethod
+    def _analyze_booking_constraints(booking: BookingDTO, attendee_bookings: list[AttendeeBookingDTO]) -> dict:
+        now_utc = datetime.datetime.now(datetime.UTC)
+        active_bookings = [
+            attendee_booking
+            for attendee_booking in attendee_bookings
+            if attendee_booking.status.lower() not in INACTIVE_BOOKING_STATUSES
+        ]
+
+        other_active_bookings = [
+            attendee_booking for attendee_booking in active_bookings if attendee_booking.booking_uid != booking.uid
+        ]
+
+        available_dates: list[datetime.datetime] = [booking.start_time]
+
+        nearest_future_booking = min(
+            (attendee_booking for attendee_booking in other_active_bookings if attendee_booking.start_time > now_utc),
+            key=lambda attendee_booking: attendee_booking.start_time,
+            default=None,
+        )
+
+        if nearest_future_booking:
+            return {
+                "is_allowed": False,
+                "available_from": nearest_future_booking.end_time,
+                "has_active_booking": True,
+                "active_booking_start": nearest_future_booking.start_time,
+            }
+
+        monthly_bookings = [
+            attendee_booking
+            for attendee_booking in active_bookings
+            if attendee_booking.start_time.year == booking.start_time.year
+            and attendee_booking.start_time.month == booking.start_time.month
+        ]
+        if len(monthly_bookings) > MAX_BOOKINGS_PER_MONTH:
+            if booking.start_time.month == 12:
+                available_dates.append(
+                    booking.start_time.replace(year=booking.start_time.year + 1, month=1, day=1, hour=0, minute=0),
+                )
+            else:
+                available_dates.append(
+                    booking.start_time.replace(month=booking.start_time.month + 1, day=1, hour=0, minute=0),
+                )
+
+        yearly_bookings = [
+            attendee_booking
+            for attendee_booking in active_bookings
+            if attendee_booking.start_time.year == booking.start_time.year
+        ]
+        if len(yearly_bookings) > MAX_BOOKINGS_PER_YEAR:
+            available_dates.append(
+                booking.start_time.replace(year=booking.start_time.year + 1, month=1, day=1, hour=0, minute=0),
+            )
+
+        is_weekly_limit_violated = False
+        for attendee_booking in other_active_bookings:
+            days_delta = abs((booking.start_time - attendee_booking.start_time).days)
+            if days_delta < MIN_DAYS_BETWEEN_BOOKINGS:
+                is_weekly_limit_violated = True
+                available_dates.append(attendee_booking.start_time + datetime.timedelta(days=MIN_DAYS_BETWEEN_BOOKINGS))
+
+        is_limits_violated = (
+            len(monthly_bookings) > MAX_BOOKINGS_PER_MONTH
+            or len(yearly_bookings) > MAX_BOOKINGS_PER_YEAR
+            or is_weekly_limit_violated
+        )
+        if is_limits_violated:
+            return {
+                "is_allowed": False,
+                "available_from": max(available_dates),
+                "has_active_booking": False,
+                "active_booking_start": None,
+            }
+
+        return {
+            "is_allowed": True,
+            "available_from": booking.start_time,
+            "has_active_booking": False,
+            "active_booking_start": None,
+        }
+
     async def _handle_created(self, booking_event: BookingEventDTO) -> None:
+        if not await self._validate_booking_constraints_on_create(booking_uid=booking_event.payload.uid):
+            return None
+
         await self._process_booking_flow(booking_event=booking_event, is_update_url_data=False)
+        return None
 
     async def _handle_rescheduled(self, booking_event: BookingEventDTO) -> None:
         await self._process_booking_flow(booking_event=booking_event, is_update_url_data=True)

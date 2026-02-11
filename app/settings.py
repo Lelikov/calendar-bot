@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     chat_api_key: str
     chat_api_secret: str
     chat_user_id_encryption_key: str
+    offer_url: str
 
     class Config:
         env_file = ".env"
