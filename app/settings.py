@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     chat_api_secret: str
     chat_user_id_encryption_key: str
     offer_url: str
+    is_enable_booking_constraints: bool = False
 
     class Config:
         env_file = ".env"

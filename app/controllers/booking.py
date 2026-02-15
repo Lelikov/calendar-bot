@@ -8,6 +8,7 @@ from app.interfaces.chat import IChatController
 from app.interfaces.meeting import IMeetingController, INotificationStateController
 from app.interfaces.notification import INotificationController
 from app.interfaces.url_shortener import IUrlShortener
+from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
@@ -30,6 +31,7 @@ class BookingController:
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
         notification_state_controller: INotificationStateController,
+        settings: Settings,
     ) -> None:
         self.db = db
         self.shortener = shortener
@@ -38,6 +40,7 @@ class BookingController:
         self.notification_controller = notification_controller
         self.notification_state_controller = notification_state_controller
         self.client_meeting_prefix = "client_"
+        self.settings = settings
 
     async def handle_booking(self, booking_event: BookingEventDTO) -> None:
         await self._background_processing(booking_event)
@@ -137,6 +140,9 @@ class BookingController:
         return None
 
     async def _validate_booking_constraints_on_create(self, booking_uid: str) -> bool:
+        if not self.settings.is_enable_booking_constraints:
+            return True
+
         booking = await self.db.get_booking(booking_uid)
         if not booking:
             logger.warning("Booking not found while validating constraints", uid=booking_uid)

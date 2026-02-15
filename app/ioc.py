@@ -175,6 +175,7 @@ class AppProvider(Provider):
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
         notification_state_controller: INotificationStateController,
+        settings: Settings,
     ) -> IBookingController:
         return BookingController(
             db=db,
@@ -183,4 +184,5 @@ class AppProvider(Provider):
             meeting_controller=meeting_controller,
             notification_controller=notification_controller,
             notification_state_controller=notification_state_controller,
+            settings=settings,
         )

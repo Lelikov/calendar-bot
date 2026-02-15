@@ -99,8 +99,8 @@ class BookingEvent(BaseCalComModel):
 
 
 class MailWebhookDeliveryInfo(BaseModel):
-    delivery_status: str
-    destination_response: str
+    delivery_status: str | None = None
+    destination_response: str | None = None
 
     def to_dto(self) -> MailWebhookDeliveryInfoDTO:
         return MailWebhookDeliveryInfoDTO(

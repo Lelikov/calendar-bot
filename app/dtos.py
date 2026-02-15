@@ -74,8 +74,8 @@ class UserDTO:
 
 @dataclass(frozen=True, slots=True)
 class MailWebhookDeliveryInfoDTO:
-    delivery_status: str
-    destination_response: str
+    delivery_status: str | None
+    destination_response: str | None
 
 
 @dataclass(frozen=True, slots=True)
