@@ -60,6 +60,17 @@ class GetStreamAdapter(IChatClient):
             channel = client.channel(channel_type="messaging", channel_id=channel_id)
             await channel.delete()
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    async def send_message(self, *, channel_id: str, user_id: str, message: dict) -> None:
+        async with StreamChatAsync(api_key=self.chat_api_key, api_secret=self.chat_api_secret) as client:
+            channel = client.channel(channel_type="messaging", channel_id=channel_id)
+            await channel.send_message(message=message, user_id=self._encode_user_id(user_id=user_id))
+
     def create_token(self, *, user_id: str, name: str, expires_at: int) -> str:
         client = StreamChat(api_key=self.chat_api_key, api_secret=self.chat_api_secret)
         return client.create_token(

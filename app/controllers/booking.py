@@ -1,6 +1,9 @@
 import datetime
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 import structlog
+from structlog.contextvars import bind_contextvars, unbind_contextvars
 
 from app.dtos import AttendeeBookingDTO, BookingDTO, BookingEventDTO, TriggerEvent
 from app.interfaces.booking import IBookingDatabaseAdapter
@@ -12,7 +15,6 @@ from app.settings import Settings
 
 
 logger = structlog.get_logger(__name__)
-
 
 BOOKING_REMINDER_NOTIFICATION_KEY = "booking_reminder_notified"
 BOOKING_REMINDER_TTL_SECONDS = 60 * 60 * 24
@@ -45,6 +47,28 @@ class BookingController:
     async def handle_booking(self, booking_event: BookingEventDTO) -> None:
         await self._background_processing(booking_event)
 
+    @staticmethod
+    @contextmanager
+    def _booking_log_context(
+        booking_uid: str,
+        booking: BookingDTO | None = None,
+    ) -> Iterator[None]:
+        bind_values = {"uid": booking_uid}
+
+        if booking:
+            bind_values.update(
+                {
+                    "user.email": booking.user.email,
+                    "client.email": booking.client.email,
+                },
+            )
+
+        bind_contextvars(**bind_values)
+        try:
+            yield
+        finally:
+            unbind_contextvars(*bind_values.keys())
+
     async def handle_booking_reminder(
         self,
         start_time_from_shift: int,
@@ -61,26 +85,27 @@ class BookingController:
         )
         count_sent_reminders = 0
         for booking in bookings:
-            if await self.notification_state_controller.was_notified(
-                room=f"{booking.uid}{booking.client.email}",
-                key=BOOKING_REMINDER_NOTIFICATION_KEY,
-            ):
-                continue
+            with self._booking_log_context(booking_uid=booking.uid, booking=booking):
+                if await self.notification_state_controller.was_notified(
+                    room=f"{booking.uid}{booking.client.email}",
+                    key=BOOKING_REMINDER_NOTIFICATION_KEY,
+                ):
+                    continue
 
-            meeting_url = await self.meeting_controller.get_meeting_url(
-                booking=booking,
-                external_id_prefix=self.client_meeting_prefix,
-            )
-            await self.notification_controller.notify_client(
-                booking=booking,
-                meeting_url=meeting_url,
-                trigger_event=TriggerEvent.BOOKING_REMINDER,
-            )
-            await self.notification_state_controller.mark_notified(
-                room=f"{booking.uid}{booking.client.email}",
-                ttl_seconds=BOOKING_REMINDER_TTL_SECONDS,
-                key=BOOKING_REMINDER_NOTIFICATION_KEY,
-            )
+                meeting_url = await self.meeting_controller.get_meeting_url(
+                    booking=booking,
+                    external_id_prefix=self.client_meeting_prefix,
+                )
+                await self.notification_controller.notify_client(
+                    booking=booking,
+                    meeting_url=meeting_url,
+                    trigger_event=TriggerEvent.BOOKING_REMINDER,
+                )
+                await self.notification_state_controller.mark_notified(
+                    room=f"{booking.uid}{booking.client.email}",
+                    ttl_seconds=BOOKING_REMINDER_TTL_SECONDS,
+                    key=BOOKING_REMINDER_NOTIFICATION_KEY,
+                )
             count_sent_reminders += 1
         return count_sent_reminders
 
@@ -91,7 +116,7 @@ class BookingController:
     ) -> None:
         booking: BookingDTO = await self.db.get_booking(booking_event.payload.uid)
         if not booking:
-            logger.warning("Booking not found", uid=booking_event.payload.uid)
+            logger.warning("Booking not found")
             return None
 
         try:
@@ -100,15 +125,31 @@ class BookingController:
                 organizer_id=booking.user.email,
                 client_id=booking.client.email,
             )
+            await self.chat_controller.send_message(
+                channel_id=booking.uid,
+                user_id=booking.user.email,
+                message={
+                    "text": f"Добрый день! Меня зовут {booking.user.name}. Сегодня я буду вашим психологом-волонтером.",
+                },
+            )
+            await self.chat_controller.send_message(
+                channel_id=booking.uid,
+                user_id=booking.user.email,
+                message={
+                    "text": "Программа попросит дать разрешение к микрофону и видеокамере вашего компьютера - "
+                    "РАЗРЕШИТЕ, так мы сможем говорить и видеть друг друга. "
+                    "Чтобы подключиться к встрече нажмите на кнопку “Присоединиться к вызову”",
+                },
+            )
         except Exception:
-            logger.exception("Error while creating chat", uid=booking_event.payload.uid)
+            logger.exception("Error while creating chat")
 
         if booking.from_reschedule:
             booking.previous_booking = await self.db.get_booking(booking.from_reschedule)
             try:
                 await self.chat_controller.delete_chat(channel_id=booking.previous_booking.uid)
             except Exception:
-                logger.exception("Error while deleting chat for previous booking", uid=booking.uid)
+                logger.exception("Error while deleting chat for previous booking")
 
         organizer_meeting_url = await self.meeting_controller.create_meeting_url(
             booking=booking,
@@ -145,7 +186,7 @@ class BookingController:
 
         booking = await self.db.get_booking(booking_uid)
         if not booking:
-            logger.warning("Booking not found while validating constraints", uid=booking_uid)
+            logger.warning("Booking not found while validating constraints")
             return False
 
         attendee_bookings = await self.db.get_attendee_bookings_by_email(email=booking.client.email)
@@ -174,12 +215,7 @@ class BookingController:
         )
 
         await self.db.delete_booking_and_attendee_by_booking_id(booking_id=booking.id)
-        logger.warning(
-            "Booking was deleted due to booking rules violation",
-            uid=booking.uid,
-            booking_id=booking.id,
-            client_email=booking.client.email,
-        )
+        logger.warning("Booking was deleted due to booking rules violation")
         return False
 
     @staticmethod
@@ -291,7 +327,7 @@ class BookingController:
                 client_id=booking.client.email,
             )
         except Exception:
-            logger.exception("Error while deleting chat for booking", uid=booking.uid)
+            logger.exception("Error while deleting chat for booking")
 
         if booking.from_reschedule:
             booking.from_reschedule = None
@@ -327,23 +363,25 @@ class BookingController:
         try:
             await self.chat_controller.delete_chat(channel_id=booking.uid)
         except Exception:
-            logger.exception("Error while deleting chat for booking", uid=booking.uid)
+            logger.exception("Error while deleting chat for booking")
         await self.meeting_controller.delete_meeting_url(booking=booking)
         await self.meeting_controller.delete_meeting_url(booking=booking, external_id_prefix=self.client_meeting_prefix)
 
     async def _background_processing(self, booking_event: BookingEventDTO) -> None:
-        logger.info("Processing booking event", uid=booking_event.payload.uid, type=booking_event.trigger_event)
-        try:
-            match booking_event.trigger_event:
-                case TriggerEvent.BOOKING_CREATED:
-                    await self._handle_created(booking_event)
-                case TriggerEvent.BOOKING_RESCHEDULED:
-                    await self._handle_rescheduled(booking_event)
-                case TriggerEvent.BOOKING_PAYMENT_INITIATED:
-                    await self._handle_reassigned(booking_event)
-                case TriggerEvent.BOOKING_CANCELLED:
-                    await self._handle_cancelled(booking_event)
-                case _:
-                    logger.warning("Unknown trigger event", event=booking_event.trigger_event)
-        except Exception:
-            logger.exception("Error in background processing", uid=booking_event.payload.uid)
+        booking = await self.db.get_booking(booking_event.payload.uid)
+        with self._booking_log_context(booking_uid=booking_event.payload.uid, booking=booking):
+            logger.info("Processing booking event", type=booking_event.trigger_event)
+            try:
+                match booking_event.trigger_event:
+                    case TriggerEvent.BOOKING_CREATED:
+                        await self._handle_created(booking_event)
+                    case TriggerEvent.BOOKING_RESCHEDULED:
+                        await self._handle_rescheduled(booking_event)
+                    case TriggerEvent.BOOKING_PAYMENT_INITIATED:
+                        await self._handle_reassigned(booking_event)
+                    case TriggerEvent.BOOKING_CANCELLED:
+                        await self._handle_cancelled(booking_event)
+                    case _:
+                        logger.warning("Unknown trigger event", event=booking_event.trigger_event)
+            except Exception:
+                logger.exception("Error in background processing")

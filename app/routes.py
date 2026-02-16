@@ -42,14 +42,14 @@ def _replace_auth_with_api_key(body: str, api_key: str) -> str:
     return re.sub(r'("auth"\s*:\s*")[^"]*(")', rf"\g<1>{api_key}\g<2>", body, count=1)
 
 
-async def validate_mail_signature(request: Request) -> bool:
+async def validate_mail_signature(request: Request, settings: Settings) -> bool:
     body = (await request.body()).decode("utf-8")
     auth_match = re.search(r'"auth"\s*:\s*"([^"]*)"', body)
     if not auth_match:
         return False
 
     auth = auth_match.group(1)
-    body_with_api_key = _replace_auth_with_api_key(body=body, api_key="6bhxa1rkttoey34ff6sdrcq4yczawipmby443qfy")
+    body_with_api_key = _replace_auth_with_api_key(body=body, api_key=settings.email_api_key)
     expected_signature = hashlib.md5(body_with_api_key.encode("utf-8")).hexdigest()  # noqa: S324
     return hmac.compare_digest(auth, expected_signature)
 
@@ -110,9 +110,10 @@ async def mail_webhook_healthcheck() -> None:
 async def mail_webhook(
     request: Request,
     event: MailWebhookEvent,
+    settings: FromDishka[Settings],
     mail_controller: FromDishka[IMailWebhookController],
 ) -> None:
-    if not await validate_mail_signature(request=request):
+    if not await validate_mail_signature(request=request, settings=settings):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Signature validation error")
 
     logger.info(event)

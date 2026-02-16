@@ -26,6 +26,7 @@ dependencies = [
     "python-dateutil>=2.9.0.post0",
     "pytz>=2024.2",
     "redis>=5.2.1",
+    "semgrep>=1.139.0",
     "sentry-sdk[fastapi]>=2.48.0",
     "sqlalchemy>=2.0.46",
     "stream-chat>=4.29.0",

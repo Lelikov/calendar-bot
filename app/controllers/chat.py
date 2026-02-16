@@ -20,6 +20,11 @@ class ChatController(IChatController):
         await self.client.delete_chat(channel_id=channel_id)
         logger.info("Chat deleted", channel_id=channel_id)
 
+    async def send_message(self, *, channel_id: str, user_id: str, message: dict) -> None:
+        logger.info("Send message to chat", channel_id=channel_id, user_id=user_id)
+        await self.client.send_message(channel_id=channel_id, user_id=user_id, message=message)
+        logger.info("Message sent to chat", channel_id=channel_id, user_id=user_id)
+
     def create_token(self, *, user_id: str, name: str, expires_at: int) -> str:
         logger.info("Token create", user_id=user_id, name=name, expires_at=expires_at)
         return self.client.create_token(user_id=user_id, name=name, expires_at=expires_at)
