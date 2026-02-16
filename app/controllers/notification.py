@@ -289,6 +289,7 @@ class NotificationController:
         has_active_booking: bool,
         previous_meeting_dates: list[datetime],
         active_booking_start: datetime | None,
+        rejection_reasons: list[str],
     ) -> None:
         try:
             template = self.jinja_env.get_template("client/booking_rejected.html")
@@ -304,6 +305,7 @@ class NotificationController:
                 has_active_booking=has_active_booking,
                 active_booking_start=active_booking_start_text,
                 previous_meeting_dates=previous_meeting_dates_text,
+                rejection_reasons=rejection_reasons,
                 offer_url=self.settings.offer_url,
                 support_email=self.settings.support_email,
             )
