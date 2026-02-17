@@ -290,13 +290,14 @@ class NotificationController:
         previous_meeting_dates: list[datetime],
         active_booking_start: datetime | None,
         rejection_reasons: list[str],
+        rejection_type: str | None,
     ) -> None:
         try:
             template = self.jinja_env.get_template("client/booking_rejected.html")
             available_from_text = self._get_participant_time(booking.client.time_zone, available_from)
             active_booking_start_text = self._get_participant_time(booking.client.time_zone, active_booking_start)
             previous_meeting_dates_text = [
-                start_time.astimezone(pytz.timezone(booking.client.time_zone)).strftime("%d-%m-%Y")
+                start_time.astimezone(pytz.timezone(booking.client.time_zone)).strftime("%d.%m.%Y")
                 for start_time in previous_meeting_dates
             ]
             html_content = template.render(
@@ -306,6 +307,7 @@ class NotificationController:
                 active_booking_start=active_booking_start_text,
                 previous_meeting_dates=previous_meeting_dates_text,
                 rejection_reasons=rejection_reasons,
+                rejection_type=rejection_type,
                 offer_url=self.settings.offer_url,
                 support_email=self.settings.support_email,
             )

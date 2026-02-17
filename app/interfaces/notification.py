@@ -42,4 +42,5 @@ class INotificationController(Protocol):
         previous_meeting_dates: list[datetime.datetime],
         active_booking_start: datetime.datetime | None,
         rejection_reasons: list[str],
+        rejection_type: str | None,
     ) -> None: ...

@@ -1,13 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+{# --- helper: last meeting date for min_interval text --- #}
+{% set last_meeting = last_meeting_date|default(previous_meeting_dates|first, true) %}
+
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
     <tr>
         <td align="center">
-            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit;">
-                Ваша запись не может быть подтверждена</h2>
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #111827; font-family: inherit; line-height: 1.25;">
+                Ваша встреча с психологом-волонтёром<br/>не подтверждена.
+            </h2>
             <p style="margin: 0; color: #4b5563; font-size: 16px; font-family: inherit;">
-                Здравствуйте, {{ client_name }}.
+                Здравствуйте, {{ client_name }}!
             </p>
         </td>
     </tr>
@@ -17,52 +22,106 @@
        style="background-color: #fff7ed; border-radius: 12px; border: 1px solid #fed7aa; margin-bottom: 24px;">
     <tr>
         <td style="padding: 24px;">
+
+            {# --- Scenario 2: has active booking --- #}
+            {% if has_active_booking %}
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                У вас уже есть одна подтверждённая встреча с психологом-волонтером на <strong>{{ active_booking_start
+                }}</strong>,
+                поэтому мы не можем записать вас на консультацию.
+            </p>
+
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                По правилам проекта, нельзя записаться на несколько консультаций одновременно.
+                Новую запись можно будет оформить только после того, как пройдёт уже назначенная встреча.
+                Записаться на следующую встречу вы сможете начиная с <strong>{{ available_from }}</strong>.
+            </p>
+
+            {# --- Other scenarios: rejection_type --- #}
+            {% else %}
+
+            {% if rejection_type == "month_limit" %}
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                В этом месяце вы уже использовали доступный лимит — 2 встречи, поэтому мы не можем записать вас на
+                консультацию с психологом-волонтёром.
+            </p>
+            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Вы сможете записаться к нам снова с <strong>{{ available_from }}</strong>.
+            </p>
+
+            {% elif rejection_type == "year_limit" %}
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                В этом году вы уже использовали доступный лимит — 10 встреч, поэтому мы не можем записать вас на
+                консультацию с психологом-волонтёром.
+            </p>
+            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Вы сможете записаться к нам снова с <strong>{{ available_from }}</strong>.
+            </p>
+
+            {% elif rejection_type == "min_interval" %}
+            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                С момента вашей последней встречи ({{ last_meeting }}) прошло менее 7 календарных дней, поэтому мы не
+                можем записать вас на консультацию с психологом-волонтёром.
+            </p>
+            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Записаться на следующую консультацию вы сможете начиная с <strong>{{ available_from }}</strong>.
+            </p>
+
+            {% else %}
+            {# fallback: keep old behavior if reasons exist #}
             {% if rejection_reasons %}
             <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
                 Причина, по которой запись сейчас недоступна:
             </p>
-            <ul style="margin: 0 0 12px 0; padding-left: 20px; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <ul style="margin: 0; padding-left: 20px; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
                 {% for rejection_reason in rejection_reasons %}
                 <li>{{ rejection_reason }}</li>
                 {% endfor %}
             </ul>
-            {% endif %}
-
-            {% if has_active_booking %}
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Запись в «Живой» подтверждается только на одну консультацию за раз.
-                Следующую консультацию можно забронировать после того, как состоится текущая встреча.
-            </p>
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Ваша ближайшая консультация запланирована на: <strong>{{ active_booking_start }}</strong>.
-            </p>
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Вы можете записаться только на <strong>{{ available_from }}</strong> и далее.
-            </p>
             {% else %}
             <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Вы можете записаться только на <strong>{{ available_from }}</strong> и далее.
+                К сожалению, сейчас мы не можем подтвердить вашу запись.
+                Вы сможете записаться начиная с <strong>{{ available_from }}</strong>.
             </p>
             {% endif %}
+            {% endif %}
 
-            <p style="margin: 12px 0 0 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Напоминаем об ограничениях: согласно <a href="{{ offer_url }}" style="color: #9a3412;"><strong>оферте</strong></a>,
-                перерыв между консультациями должен быть не менее 7 календарных дней,
-                количество консультаций в месяц не должно превышать 2,
-                в год — не более 10 консультаций на одного благополучателя.
+            {% endif %}
+
+            <hr style="border: none; border-top: 1px solid #fed7aa; margin: 16px 0;"/>
+
+            <p style="margin: 0 0 10px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Обратите внимание на правила предоставления благотворительных услуг:
             </p>
+
+            <ul style="margin: 0 0 10px 0; padding-left: 20px; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                <li>перерыв между консультациями — не менее 7 дней;</li>
+                <li>не более 2 консультаций в месяц;</li>
+                <li>не более 10 консультаций в год.</li>
+            </ul>
+
+            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+                Подробнее со всеми правилами вы можете ознакомиться
+                <a href="{{ offer_url }}" style="color: #9a3412; text-decoration: underline;"><strong>на нашем
+                    сайте</strong></a>.
+            </p>
+
         </td>
     </tr>
 </table>
 
-{% if previous_meeting_dates and not has_active_booking %}
+{# --- List of meetings: only for month/year limit, and only when no active booking --- #}
+{% if previous_meeting_dates  %}
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
        style="background-color: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px;">
     <tr>
         <td style="padding: 24px;">
             <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; font-family: inherit;">
-                <strong>Список ваших предыдущих встреч:</strong>
+                <strong>
+                    Ваши последние встречи:
+                </strong>
             </p>
+
             <ul style="margin: 0; padding-left: 20px; color: #4b5563; font-size: 15px; line-height: 1.6; font-family: inherit;">
                 {% for meeting_date in previous_meeting_dates %}
                 <li>{{ meeting_date }}</li>
@@ -77,9 +136,10 @@
     <tr>
         <td align="center">
             <p style="margin: 0; color: #4b5563; font-size: 14px; font-family: inherit;">
-                Если у вас возникли вопросы, напишите нам: <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+                Напишите нам, если у вас остались вопросы: <a href="mailto:{{ support_email }}">{{ support_email }}</a>
             </p>
         </td>
     </tr>
 </table>
+
 {% endblock %}

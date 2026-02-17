@@ -213,6 +213,7 @@ class BookingController:
             previous_meeting_dates=previous_meeting_dates,
             active_booking_start=validation_result["active_booking_start"],
             rejection_reasons=validation_result["rejection_reasons"],
+            rejection_type=validation_result.get("rejection_type"),
         )
 
         await self.db.delete_booking_and_attendee_by_booking_id(booking_id=booking.id)
@@ -247,6 +248,7 @@ class BookingController:
                 "has_active_booking": True,
                 "active_booking_start": nearest_future_booking.start_time,
                 "rejection_reasons": ["У вас уже есть подтверждённая будущая консультация."],
+                "rejection_type": None,
             }
 
         monthly_bookings = [
@@ -289,15 +291,23 @@ class BookingController:
         )
         if is_limits_violated:
             rejection_reasons: list[str] = []
-            if len(monthly_bookings) > MAX_BOOKINGS_PER_MONTH:
-                rejection_reasons.append(
-                    f"В текущем месяце уже достигнут лимит: не более {MAX_BOOKINGS_PER_MONTH} консультаций.",
-                )
+            rejection_type = None
+
             if len(yearly_bookings) > MAX_BOOKINGS_PER_YEAR:
+                if not rejection_type:
+                    rejection_type = "year_limit"
                 rejection_reasons.append(
                     f"В текущем году уже достигнут лимит: не более {MAX_BOOKINGS_PER_YEAR} консультаций.",
                 )
+
+            if len(monthly_bookings) > MAX_BOOKINGS_PER_MONTH:
+                rejection_type = "month_limit"
+                rejection_reasons.append(
+                    f"В текущем месяце уже достигнут лимит: не более {MAX_BOOKINGS_PER_MONTH} консультаций.",
+                )
             if is_weekly_limit_violated:
+                if not rejection_type:
+                    rejection_type = "min_interval"
                 rejection_reasons.append(
                     f"Между консультациями должно проходить не менее {MIN_DAYS_BETWEEN_BOOKINGS} календарных дней.",
                 )
@@ -308,6 +318,7 @@ class BookingController:
                 "has_active_booking": False,
                 "active_booking_start": None,
                 "rejection_reasons": rejection_reasons,
+                "rejection_type": rejection_type,
             }
 
         return {
@@ -316,6 +327,7 @@ class BookingController:
             "has_active_booking": False,
             "active_booking_start": None,
             "rejection_reasons": [],
+            "rejection_type": None,
         }
 
     async def _handle_created(self, booking_event: BookingEventDTO) -> None:
