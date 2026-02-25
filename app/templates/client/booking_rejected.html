@@ -4,6 +4,9 @@
 
 {# --- helper: last meeting date for min_interval text --- #}
 {% set last_meeting = last_meeting_date|default(previous_meeting_dates|first, true) %}
+{% set warning_text_style = "margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;" %}
+{% set warning_text_compact_style = "margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;" %}
+{% set warning_list_style = "margin: 0 0 10px 0; padding-left: 20px; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;" %}
 
 <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom: 24px;">
     <tr>
@@ -25,13 +28,13 @@
 
             {# --- Scenario 2: has active booking --- #}
             {% if has_active_booking %}
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <p style="{{ warning_text_style }}">
                 У вас уже есть одна подтверждённая встреча с психологом-волонтером на <strong>{{ active_booking_start
                 }}</strong>,
                 поэтому мы не можем записать вас на консультацию.
             </p>
 
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <p style="{{ warning_text_style }}">
                 По правилам проекта, нельзя записаться на несколько консультаций одновременно.
                 Новую запись можно будет оформить только после того, как пройдёт уже назначенная встреча.
                 Записаться на следующую встречу вы сможете начиная с <strong>{{ available_from }}</strong>.
@@ -40,37 +43,31 @@
             {# --- Other scenarios: rejection_type --- #}
             {% else %}
 
+            {% set follow_up_text = "Вы сможете записаться к нам снова с" %}
+
             {% if rejection_type == "month_limit" %}
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <p style="{{ warning_text_style }}">
                 В этом месяце вы уже использовали доступный лимит — 2 встречи, поэтому мы не можем записать вас на
                 консультацию с психологом-волонтёром.
             </p>
-            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Вы сможете записаться к нам снова с <strong>{{ available_from }}</strong>.
-            </p>
 
             {% elif rejection_type == "year_limit" %}
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <p style="{{ warning_text_style }}">
                 В этом году вы уже использовали доступный лимит — 10 встреч, поэтому мы не можем записать вас на
                 консультацию с психологом-волонтёром.
             </p>
-            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Вы сможете записаться к нам снова с <strong>{{ available_from }}</strong>.
-            </p>
 
             {% elif rejection_type == "min_interval" %}
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            {% set follow_up_text = "Записаться на следующую консультацию вы сможете начиная с" %}
+            <p style="{{ warning_text_style }}">
                 С момента вашей последней встречи ({{ last_meeting }}) прошло менее 7 календарных дней, поэтому мы не
                 можем записать вас на консультацию с психологом-волонтёром.
-            </p>
-            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
-                Записаться на следующую консультацию вы сможете начиная с <strong>{{ available_from }}</strong>.
             </p>
 
             {% else %}
             {# fallback: keep old behavior if reasons exist #}
             {% if rejection_reasons %}
-            <p style="margin: 0 0 12px 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <p style="{{ warning_text_style }}">
                 Причина, по которой запись сейчас недоступна:
             </p>
             <ul style="margin: 0; padding-left: 20px; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
@@ -79,11 +76,17 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <p style="margin: 0; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <p style="{{ warning_text_compact_style }}">
                 К сожалению, сейчас мы не можем подтвердить вашу запись.
                 Вы сможете записаться начиная с <strong>{{ available_from }}</strong>.
             </p>
             {% endif %}
+            {% endif %}
+
+            {% if rejection_type in ["month_limit", "year_limit", "min_interval"] %}
+            <p style="{{ warning_text_compact_style }}">
+                {{ follow_up_text }} <strong>{{ available_from }}</strong>.
+            </p>
             {% endif %}
 
             {% endif %}
@@ -94,7 +97,7 @@
                 Обратите внимание на правила предоставления благотворительных услуг:
             </p>
 
-            <ul style="margin: 0 0 10px 0; padding-left: 20px; color: #9a3412; font-size: 16px; line-height: 1.5; font-family: inherit;">
+            <ul style="{{ warning_list_style }}">
                 <li>перерыв между консультациями — не менее 7 дней;</li>
                 <li>не более 2 консультаций в месяц;</li>
                 <li>не более 10 консультаций в год.</li>

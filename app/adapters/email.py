@@ -49,4 +49,3 @@ class UnisenderGoEmailClient(IEmailClient):
                 )
             except UnisenderGoError as e:
                 logger.exception("Failed to send email via Unisender Go", to_email=to_email, error=str(e))
-                raise

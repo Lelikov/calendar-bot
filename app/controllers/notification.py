@@ -13,6 +13,7 @@ from app.dtos import (
     TriggerEvent,
     UserDTO,
 )
+from app.interfaces import INotificationController
 from app.interfaces.booking import IBookingDatabaseAdapter
 from app.interfaces.mail import IEmailController
 from app.settings import Settings
@@ -23,7 +24,7 @@ logger = structlog.get_logger(__name__)
 TIME_FORMAT = "%d-%m-%Y, %H:%M"
 
 
-class NotificationController:
+class NotificationController(INotificationController):
     EMAIL_TEMPLATES: ClassVar = {
         "organizer": {
             TriggerEvent.BOOKING_CREATED: ("organizer/confirmation.html", "✅Новая запись"),

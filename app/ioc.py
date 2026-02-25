@@ -14,6 +14,7 @@ from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.adapters.sql import SqlExecutor
 from app.controllers.booking import BookingController
+from app.controllers.booking_constraints import BookingConstraintsAnalyzer
 from app.controllers.cache import CacheController
 from app.controllers.chat import ChatController
 from app.controllers.email import EmailController
@@ -24,6 +25,7 @@ from app.controllers.meeting import MeetingController
 from app.controllers.notification import NotificationController
 from app.controllers.telegram import TelegramController
 from app.interfaces.booking import IBookingController, IBookingDatabaseAdapter
+from app.interfaces.booking_constraints import IBookingConstraintsAnalyzer
 from app.interfaces.cache import ICacheController
 from app.interfaces.chat import IChatClient, IChatController
 from app.interfaces.mail import IEmailClient, IEmailController, IMailWebhookController
@@ -142,6 +144,10 @@ class AppProvider(Provider):
     ) -> INotificationController:
         return NotificationController(db=db, bot=bot, settings=settings, email_controller=email_controller)
 
+    @provide(scope=Scope.REQUEST)
+    def provide_booking_constraints_analyzer(self) -> IBookingConstraintsAnalyzer:
+        return BookingConstraintsAnalyzer()
+
     @provide(scope=Scope.APP)
     def provide_telegram_controller(self, bot: Bot, settings: Settings) -> ITelegramController:
         return TelegramController(bot=bot, settings=settings)
@@ -175,6 +181,7 @@ class AppProvider(Provider):
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
         notification_state_controller: INotificationStateController,
+        booking_constraints_analyzer: IBookingConstraintsAnalyzer,
         settings: Settings,
     ) -> IBookingController:
         return BookingController(
@@ -184,5 +191,6 @@ class AppProvider(Provider):
             meeting_controller=meeting_controller,
             notification_controller=notification_controller,
             notification_state_controller=notification_state_controller,
+            booking_constraints_analyzer=booking_constraints_analyzer,
             settings=settings,
         )
