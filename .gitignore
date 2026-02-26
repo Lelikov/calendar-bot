@@ -139,3 +139,4 @@ debug/**
 .ruff_cache
 
 pyrightconfig.json
+/opensearch_data/

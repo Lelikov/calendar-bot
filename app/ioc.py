@@ -48,17 +48,22 @@ class AppProvider(Provider):
         return Settings()
 
     @provide(scope=Scope.APP)
-    def provide_bot(self, settings: Settings) -> Bot:
-        return Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    async def provide_bot(self, settings: Settings) -> AsyncGenerator[Bot, Any]:
+        async with Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML)) as bot:
+            yield bot
 
     @provide(scope=Scope.APP)
-    def provide_db_engine(self, settings: Settings) -> AsyncEngine:
-        return create_async_engine(
+    async def provide_db_engine(self, settings: Settings) -> AsyncGenerator[AsyncEngine, Any]:
+        engine = create_async_engine(
             settings.postgres_dsn,
             pool_size=10,
             max_overflow=20,
             pool_pre_ping=True,
         )
+        try:
+            yield engine
+        finally:
+            await engine.dispose()
 
     @provide(scope=Scope.APP)
     def provide_sessionmaker(self, engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
@@ -81,8 +86,12 @@ class AppProvider(Provider):
         return SqlExecutor(session)
 
     @provide(scope=Scope.APP)
-    def provide_cache_client(self, settings: Settings) -> Redis:
-        return Redis(connection_pool=ConnectionPool.from_url(settings.redis_url))
+    async def provide_cache_client(self, settings: Settings) -> AsyncGenerator[Redis, Any]:
+        redis = Redis(connection_pool=ConnectionPool.from_url(settings.redis_url))
+        try:
+            yield redis
+        finally:
+            await redis.aclose()
 
     @provide(scope=Scope.APP)
     def provide_cache_controller(self, cache_client: Redis) -> ICacheController:

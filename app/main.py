@@ -12,7 +12,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.config.logger import setup_logger
 from app.handlers import messages  # noqa: F401
@@ -44,11 +43,10 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
         )
 
     logger.info("🚀 Starting application")
-    engine = await container.get(AsyncEngine)
     telegram_controller = await container.get(ITelegramController)
     await telegram_controller.start()
     yield
-    await engine.dispose()
+    await container.close()
     logger.info("⛔ Stopping application")
 
 

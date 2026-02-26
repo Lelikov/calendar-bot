@@ -9,3 +9,53 @@ services:
     restart: always
     env_file:
       - .env
+
+  vector:
+    image: timberio/vector:latest-alpine
+    container_name: vector
+    restart: unless-stopped
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./vector.toml:/etc/vector/vector.yaml:ro
+
+    command: [ "--config-toml", "/etc/vector/vector.yaml" ]
+
+  opensearch:
+    image: opensearchproject/opensearch:3.5.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=false
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - DISABLE_SECURITY_PLUGIN=true
+    mem_limit: 1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./opensearch_data:/usr/share/opensearch/data
+    expose:
+      - "9200"
+
+  opensearch-init:
+    image: curlimages/curl:8.12.1
+    container_name: opensearch-init
+    depends_on:
+      - opensearch
+    volumes:
+      - ./opensearch-init.sh:/init/opensearch-init.sh:ro
+    command: ["sh", "/init/opensearch-init.sh"]
+    restart: "no"
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "127.0.0.1:5601:5601"
+    depends_on:
+      - opensearch
