@@ -3,7 +3,7 @@ from typing import Protocol
 
 
 class IUrlShortener(Protocol):
-    async def create_url(self, long_url: str, expires_at: float, external_id: str) -> str | None: ...
+    async def create_url(self, long_url: str, expires_at: float, not_before: float, external_id: str) -> str | None: ...
 
     async def get_url(self, external_id: str) -> str | None: ...
 
@@ -12,6 +12,7 @@ class IUrlShortener(Protocol):
         *,
         long_url: str,
         expires_at: float,
+        not_before: float,
         new_external_id: str,
         old_external_id: str,
     ) -> str | None: ...

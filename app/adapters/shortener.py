@@ -13,7 +13,7 @@ class UrlShortenerAdapter(IUrlShortener):
         self.settings = settings
         self.base_url = settings.shortner_url
 
-    async def create_url(self, long_url: str, expires_at: float, external_id: str) -> str | None:
+    async def create_url(self, long_url: str, expires_at: float, not_before: float, external_id: str) -> str | None:
         if not self._check_api_key():
             return None
 
@@ -26,6 +26,7 @@ class UrlShortenerAdapter(IUrlShortener):
                         "url": long_url,
                         "expires_at": expires_at,
                         "external_id": external_id,
+                        "not_before": not_before,
                     },
                 )
                 response.raise_for_status()
@@ -56,6 +57,7 @@ class UrlShortenerAdapter(IUrlShortener):
         self,
         long_url: str,
         expires_at: float,
+        not_before: float,
         old_external_id: str,
         new_external_id: str,
     ) -> str | None:
@@ -70,6 +72,7 @@ class UrlShortenerAdapter(IUrlShortener):
                     json={
                         "url": long_url,
                         "expires_at": expires_at,
+                        "not_before": not_before,
                         "external_id": new_external_id,
                     },
                 )

@@ -93,11 +93,13 @@ async def _send_meeting_test_links(
         external_id=f"client_{meeting_uid}",
         long_url=client_long_url,
         expires_at=end_time,
+        not_before=start_time,
     )
     organizer_short_url = await shortener.create_url(
         external_id=f"{meeting_uid}",
         long_url=organizer_long_url,
         expires_at=end_time,
+        not_before=start_time,
     )
 
     await message.answer(f"Ваша ссылка для подключения {organizer_short_url}\nСсылка для клиента {client_short_url}")

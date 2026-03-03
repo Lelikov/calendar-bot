@@ -4,10 +4,11 @@ from datetime import UTC
 from sqlalchemy.engine import RowMapping
 
 from app.dtos import AttendeeBookingDTO, BookingClientDTO, BookingDTO, UserDTO
+from app.interfaces import IBookingDatabaseAdapter
 from app.interfaces.sql import ISqlExecutor
 
 
-class BookingDatabaseAdapter:
+class BookingDatabaseAdapter(IBookingDatabaseAdapter):
     def __init__(self, sql: ISqlExecutor) -> None:
         self.sql = sql
 

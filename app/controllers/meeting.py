@@ -76,6 +76,9 @@ class MeetingController(IMeetingController):
     ) -> None:
         await self.shortener.delete_url(external_id=f"{external_id_prefix}{booking.uid}")
 
+    def _get_meeting_not_before(self, *, start_time: datetime) -> float:
+        return start_time.timestamp() - self.timeshift
+
     def _get_meeting_expiration(self, end_time: datetime) -> float:
         return end_time.timestamp() + self.timeshift
 
@@ -107,11 +110,13 @@ class MeetingController(IMeetingController):
         )
         try:
             expires_at = self._get_meeting_expiration(booking.end_time)
+            not_before = self._get_meeting_not_before(start_time=booking.start_time)
             if is_update_url_data:
                 old_external_id = external_id_prefix + (booking.from_reschedule or booking.uid)
                 short_url = await self.shortener.update_url_data(
                     long_url=long_url,
                     expires_at=expires_at,
+                    not_before=not_before,
                     new_external_id=external_id_prefix + booking.uid,
                     old_external_id=old_external_id,
                 )
@@ -119,6 +124,7 @@ class MeetingController(IMeetingController):
                 short_url = await self.shortener.create_url(
                     long_url=long_url,
                     expires_at=expires_at,
+                    not_before=not_before,
                     external_id=external_id_prefix + booking.uid,
                 )
 
