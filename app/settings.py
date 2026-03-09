@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     chat_user_id_encryption_key: str
     offer_url: str
     is_enable_booking_constraints: bool = False
+    events_endpoint_url: str | None = Field(strict=True, default=None)
+    events_token: str | None = Field(strict=True, default=None)
+    events_source: str = "booking"
+    events_timeout_seconds: float = 5.0
 
     class Config:
         env_file = ".env"

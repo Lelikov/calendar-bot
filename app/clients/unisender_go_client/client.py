@@ -56,7 +56,6 @@ class UnisenderGoClient(BaseClient):
         if response.is_success:
             self.logger.debug(
                 "message_sent_successfully",
-                message_id=response.message_id,
                 subject=request.subject,
             )
             return response

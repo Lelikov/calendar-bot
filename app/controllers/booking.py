@@ -9,6 +9,7 @@ from app.dtos import BookingDTO, BookingEventDTO, TriggerEvent
 from app.interfaces.booking import IBookingDatabaseAdapter
 from app.interfaces.booking_constraints import IBookingConstraintsAnalyzer
 from app.interfaces.chat import IChatController
+from app.interfaces.events import EventType, IEventsAdapter
 from app.interfaces.meeting import IMeetingController, INotificationStateController
 from app.interfaces.notification import INotificationController
 from app.interfaces.url_shortener import IUrlShortener
@@ -27,6 +28,7 @@ class BookingController:
         db: IBookingDatabaseAdapter,
         shortener: IUrlShortener,
         chat_controller: IChatController,
+        events_adapter: IEventsAdapter,
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
         notification_state_controller: INotificationStateController,
@@ -36,6 +38,7 @@ class BookingController:
         self.db = db
         self.shortener = shortener
         self.chat_controller = chat_controller
+        self.events_adapter = events_adapter
         self.meeting_controller = meeting_controller
         self.notification_controller = notification_controller
         self.notification_state_controller = notification_state_controller
@@ -104,6 +107,18 @@ class BookingController:
                     room=f"{booking.uid}{booking.client.email}",
                     ttl_seconds=BOOKING_REMINDER_TTL_SECONDS,
                     key=BOOKING_REMINDER_NOTIFICATION_KEY,
+                )
+                await self.events_adapter.send_event(
+                    booking_uid=booking.uid,
+                    event=EventType.BOOKING_REMINDER_SENT,
+                    data={
+                        "users": [
+                            {
+                                "email": booking.client.email,
+                                "role": "client",
+                            },
+                        ],
+                    },
                 )
             count_sent_reminders += 1
         return count_sent_reminders
@@ -200,15 +215,97 @@ class BookingController:
         if not await self._validate_booking_constraints_on_create(booking_uid=booking_event.payload.uid):
             return None
 
+        booking = await self.db.get_booking(booking_event.payload.uid)
+        await self.events_adapter.send_event(
+            booking_uid=booking.uid,
+            event=EventType.BOOKING_CREATED,
+            data={
+                "users": [
+                    {
+                        "email": booking.user.email,
+                        "role": "organizer",
+                        "time_zone": booking.user.time_zone,
+                    },
+                    {
+                        "email": booking.client.email,
+                        "role": "client",
+                        "time_zone": booking.client.time_zone,
+                    },
+                ],
+                "start_time": booking.start_time,
+                "end_time": booking.end_time,
+            },
+        )
+
         await self._process_booking_flow(booking_event=booking_event, is_update_url_data=False)
+
         return None
 
     async def _handle_rescheduled(self, booking_event: BookingEventDTO) -> None:
         await self._process_booking_flow(booking_event=booking_event, is_update_url_data=True)
+        booking = await self.db.get_booking(booking_event.payload.uid)
+        if not booking:
+            return None
+
+        previous_booking_start_time = None
+        if booking.from_reschedule and (previous_booking := await self.db.get_booking(booking.from_reschedule)):
+            previous_booking_start_time = previous_booking.start_time
+
+        await self.events_adapter.send_event(
+            booking_uid=booking.uid,
+            event=EventType.BOOKING_RESCHEDULED,
+            data={
+                "users": [
+                    {
+                        "email": booking.user.email,
+                        "role": "organizer",
+                        "time_zone": booking.user.time_zone,
+                    },
+                    {
+                        "email": booking.client.email,
+                        "role": "client",
+                        "time_zone": booking.client.time_zone,
+                    },
+                ],
+                "start_time": booking.start_time,
+                "end_time": booking.end_time,
+                "previous_booking.start_time": previous_booking_start_time,
+            },
+        )
+        return None
 
     async def _handle_reassigned(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
-        if previous_organizer := await self.db.get_user_by_id(user_id=booking.reassign_by_id):
+        if not booking or not booking.user:
+            return None
+
+        previous_organizer = await self.db.get_user_by_id(user_id=booking.reassign_by_id)
+
+        await self.events_adapter.send_event(
+            booking_uid=booking.uid,
+            event=EventType.BOOKING_REASSIGNED,
+            data={
+                "users": [
+                    {
+                        "email": previous_organizer.email if previous_organizer else "",
+                        "role": "previous_organizer",
+                        "time_zone": previous_organizer.time_zone if previous_organizer else "",
+                    },
+                    {
+                        "email": booking.user.email,
+                        "role": "organizer",
+                        "time_zone": booking.user.time_zone,
+                    },
+                    {
+                        "email": booking.client.email,
+                        "role": "client",
+                        "time_zone": booking.client.time_zone,
+                    },
+                ],
+            },
+        )
+
+        if previous_organizer:
             await self.notification_controller.notify_organizer(
                 user=previous_organizer,
                 booking=booking,
@@ -238,9 +335,12 @@ class BookingController:
             trigger_event=TriggerEvent.BOOKING_CREATED,
             meeting_url=meeting_url,
         )
+        return None
 
     async def _handle_cancelled(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
+        if not booking:
+            return None
 
         await self.notification_controller.notify_organizer(
             user=booking.user,
@@ -259,6 +359,26 @@ class BookingController:
             logger.exception("Error while deleting chat for booking")
         await self.meeting_controller.delete_meeting_url(booking=booking)
         await self.meeting_controller.delete_meeting_url(booking=booking, external_id_prefix=self.client_meeting_prefix)
+        await self.events_adapter.send_event(
+            booking_uid=booking.uid,
+            event=EventType.BOOKING_CANCELLED,
+            data={
+                "users": [
+                    {
+                        "email": booking.user.email,
+                        "role": "organizer",
+                        "time_zone": booking.user.time_zone,
+                    },
+                    {
+                        "email": booking.client.email,
+                        "role": "client",
+                        "time_zone": booking.client.time_zone,
+                    },
+                ],
+                "cancellation_reason": booking.cancellation_reason,
+            },
+        )
+        return None
 
     async def _background_processing(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
@@ -270,7 +390,7 @@ class BookingController:
                         await self._handle_created(booking_event)
                     case TriggerEvent.BOOKING_RESCHEDULED:
                         await self._handle_rescheduled(booking_event)
-                    case TriggerEvent.BOOKING_PAYMENT_INITIATED:
+                    case TriggerEvent.BOOKING_REASSIGNED:
                         await self._handle_reassigned(booking_event)
                     case TriggerEvent.BOOKING_CANCELLED:
                         await self._handle_cancelled(booking_event)

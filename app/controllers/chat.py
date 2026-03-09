@@ -1,14 +1,16 @@
 import structlog
 
 from app.interfaces.chat import IChatClient, IChatController
+from app.interfaces.events import IEventsAdapter
 
 
 logger = structlog.get_logger(__name__)
 
 
 class ChatController(IChatController):
-    def __init__(self, client: IChatClient) -> None:
+    def __init__(self, client: IChatClient, events_adapter: IEventsAdapter) -> None:
         self.client = client
+        self.events_adapter = events_adapter
 
     async def create_chat(self, *, channel_id: str, organizer_id: str, client_id: str) -> None:
         logger.info("Creating chat", channel_id=channel_id, organizer_id=organizer_id, client_id=client_id)

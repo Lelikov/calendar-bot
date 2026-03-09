@@ -8,6 +8,7 @@ import structlog
 from app.dtos import BookingDTO
 from app.interfaces.booking import IBookingDatabaseAdapter
 from app.interfaces.chat import IChatController
+from app.interfaces.events import EventType, IEventsAdapter
 from app.interfaces.meeting import IMeetingController
 from app.interfaces.url_shortener import IUrlShortener
 from app.settings import Settings
@@ -25,11 +26,13 @@ class MeetingController(IMeetingController):
         db: IBookingDatabaseAdapter,
         shortener: IUrlShortener,
         chat_controller: IChatController,
+        events_adapter: IEventsAdapter,
         settings: Settings,
     ) -> None:
         self.db = db
         self.shortener = shortener
         self.chat_controller = chat_controller
+        self.events_adapter = events_adapter
         self.settings = settings
         self.timeshift = 5 * 60
 
@@ -47,6 +50,7 @@ class MeetingController(IMeetingController):
             booking=booking,
             participant_name=participant_name,
             external_id_prefix=external_id_prefix,
+            participant_id=participant_id,
         )
         participant_chat_token = self.chat_controller.create_token(
             user_id=participant_id,
@@ -63,6 +67,20 @@ class MeetingController(IMeetingController):
         if is_update_url_in_db:
             await self._ensure_metadata_sync(booking.uid)
             await self.db.update_booking_video_url(booking.uid, meeting_url)
+
+        await self.events_adapter.send_event(
+            booking_uid=booking.uid,
+            event=EventType.MEETING_URL_CREATED,
+            data={
+                "users": [
+                    {
+                        "email": participant_id,
+                        "role": "client" if external_id_prefix else "organizer",
+                    },
+                ],
+                "meeting_url": meeting_url,
+            },
+        )
         return meeting_url
 
     async def get_meeting_url(self, booking: BookingDTO, external_id_prefix: str = "") -> str | None:
@@ -75,6 +93,18 @@ class MeetingController(IMeetingController):
         external_id_prefix: str = "",
     ) -> None:
         await self.shortener.delete_url(external_id=f"{external_id_prefix}{booking.uid}")
+        await self.events_adapter.send_event(
+            booking_uid=booking.uid,
+            event=EventType.MEETING_URL_DELETED,
+            data={
+                "users": [
+                    {
+                        "email": booking.client.email if external_id_prefix else booking.user.email,
+                        "role": "client" if external_id_prefix else "organizer",
+                    },
+                ],
+            },
+        )
 
     def _get_meeting_not_before(self, *, start_time: datetime) -> float:
         return start_time.timestamp() - self.timeshift
@@ -82,7 +112,14 @@ class MeetingController(IMeetingController):
     def _get_meeting_expiration(self, end_time: datetime) -> float:
         return end_time.timestamp() + self.timeshift
 
-    def _create_jitsi_token(self, *, booking: BookingDTO, participant_name: str, external_id_prefix: str) -> str:
+    def _create_jitsi_token(
+        self,
+        *,
+        booking: BookingDTO,
+        participant_name: str,
+        participant_id: str,
+        external_id_prefix: str,
+    ) -> str:
         payload = {
             "aud": self.settings.meeting_jwt_aud,
             "iss": self.settings.meeting_jwt_iss,
@@ -91,7 +128,13 @@ class MeetingController(IMeetingController):
             "iat": int(time.time()),
             "nbf": booking.start_time.timestamp() - self.timeshift,
             "exp": self._get_meeting_expiration(booking.end_time),
-            "context": {"user": {"name": participant_name, "role": "client" if external_id_prefix else "organizer"}},
+            "context": {
+                "user": {
+                    "name": participant_name,
+                    "role": "client" if external_id_prefix else "organizer",
+                    "email": participant_id,
+                },
+            },
         }
         return jwt.encode(payload, self.settings.jitsi_jwt_token, algorithm="HS256")
 

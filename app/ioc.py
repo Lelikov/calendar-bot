@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.email import UnisenderGoEmailClient
+from app.adapters.events import CloudEventsAdapter
 from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.adapters.sql import SqlExecutor
@@ -28,6 +29,7 @@ from app.interfaces.booking import IBookingController, IBookingDatabaseAdapter
 from app.interfaces.booking_constraints import IBookingConstraintsAnalyzer
 from app.interfaces.cache import ICacheController
 from app.interfaces.chat import IChatClient, IChatController
+from app.interfaces.events import IEventsAdapter
 from app.interfaces.mail import IEmailClient, IEmailController, IMailWebhookController
 from app.interfaces.meeting import IMeetingController, IMeetWebhookController, INotificationStateController
 from app.interfaces.notification import INotificationController
@@ -130,8 +132,21 @@ class AppProvider(Provider):
         )
 
     @provide(scope=Scope.APP)
-    def provide_chat_controller(self, chat_adapter: IChatClient) -> IChatController:
-        return ChatController(client=chat_adapter)
+    def provide_chat_controller(
+        self,
+        chat_adapter: IChatClient,
+        events_adapter: IEventsAdapter,
+    ) -> IChatController:
+        return ChatController(client=chat_adapter, events_adapter=events_adapter)
+
+    @provide(scope=Scope.APP)
+    def provide_events_adapter(self, settings: Settings) -> IEventsAdapter:
+        return CloudEventsAdapter(
+            endpoint_url=settings.events_endpoint_url,
+            token=settings.events_token,
+            source=settings.events_source,
+            timeout_seconds=settings.events_timeout_seconds,
+        )
 
     @provide(scope=Scope.REQUEST)
     def provide_meeting_controller(
@@ -139,9 +154,16 @@ class AppProvider(Provider):
         db: IBookingDatabaseAdapter,
         shortener: IUrlShortener,
         chat_controller: IChatController,
+        events_adapter: IEventsAdapter,
         settings: Settings,
     ) -> IMeetingController:
-        return MeetingController(db=db, shortener=shortener, chat_controller=chat_controller, settings=settings)
+        return MeetingController(
+            db=db,
+            shortener=shortener,
+            chat_controller=chat_controller,
+            events_adapter=events_adapter,
+            settings=settings,
+        )
 
     @provide(scope=Scope.REQUEST)
     def provide_notification_controller(
@@ -150,8 +172,15 @@ class AppProvider(Provider):
         bot: Bot,
         settings: Settings,
         email_controller: IEmailController,
+        events_adapter: IEventsAdapter,
     ) -> INotificationController:
-        return NotificationController(db=db, bot=bot, settings=settings, email_controller=email_controller)
+        return NotificationController(
+            db=db,
+            bot=bot,
+            settings=settings,
+            email_controller=email_controller,
+            events_adapter=events_adapter,
+        )
 
     @provide(scope=Scope.REQUEST)
     def provide_booking_constraints_analyzer(self) -> IBookingConstraintsAnalyzer:
@@ -187,6 +216,7 @@ class AppProvider(Provider):
         db: IBookingDatabaseAdapter,
         shortener: IUrlShortener,
         chat_controller: IChatController,
+        events_adapter: IEventsAdapter,
         meeting_controller: IMeetingController,
         notification_controller: INotificationController,
         notification_state_controller: INotificationStateController,
@@ -197,6 +227,7 @@ class AppProvider(Provider):
             db=db,
             shortener=shortener,
             chat_controller=chat_controller,
+            events_adapter=events_adapter,
             meeting_controller=meeting_controller,
             notification_controller=notification_controller,
             notification_state_controller=notification_state_controller,

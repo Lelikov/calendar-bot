@@ -12,8 +12,9 @@ class TriggerEvent(StrEnum):
     BOOKING_CREATED = "BOOKING_CREATED"
     BOOKING_RESCHEDULED = "BOOKING_RESCHEDULED"
     BOOKING_CANCELLED = "BOOKING_CANCELLED"
-    BOOKING_PAYMENT_INITIATED = "BOOKING_PAYMENT_INITIATED"
+    BOOKING_REASSIGNED = "BOOKING_PAYMENT_INITIATED"
     BOOKING_REMINDER = "BOOKING_REMINDER"
+    BOOKING_REJECTED = "BOOKING_REJECTED"
     PING = "PING"
     MEET_CLIENT_JOINED = "MEET_CLIENT_JOINED"
 
@@ -103,6 +104,14 @@ class MailWebhookEventsByUserDTO:
 class MailWebhookEventDTO:
     auth: str
     events_by_user: list[MailWebhookEventsByUserDTO]
+
+
+@dataclass(frozen=True, slots=True)
+class EmailSendResultDTO:
+    status: str
+    job_id: str | None = None
+    emails: list[str] | None = None
+    tags: list[str] | None = None
 
 
 class ResponseDTO(TypedDict):

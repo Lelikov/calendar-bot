@@ -4,6 +4,7 @@ from app.clients.models import EmailAddress
 from app.clients.unisender_go_client import UnisenderGoClient
 from app.clients.unisender_go_client.exceptions import UnisenderGoError
 from app.clients.unisender_go_client.models.requests import SendMessageRequest
+from app.dtos import BookingDTO, EmailSendResultDTO
 from app.interfaces.mail import IEmailClient
 
 
@@ -18,6 +19,7 @@ class UnisenderGoEmailClient(IEmailClient):
 
     async def send_email(
         self,
+        booking: BookingDTO,
         to_email: str,
         from_email: str,
         from_email_name: str | None,
@@ -25,13 +27,14 @@ class UnisenderGoEmailClient(IEmailClient):
         reply_to_email_name: str | None,
         subject: str,
         html_content: str,
-    ) -> None:
+    ) -> EmailSendResultDTO:
         async with UnisenderGoClient(
             api_url=self.api_url,
             api_key=self.api_key,
             max_retries=self.max_retries,
         ) as client:
             request = SendMessageRequest(
+                booking_uid=booking.uid,
                 to=[EmailAddress(email=to_email)],
                 from_address=EmailAddress(email=from_email, name=from_email_name),
                 reply_address=EmailAddress(email=reply_to_email, name=reply_to_email_name) if reply_to_email else None,
@@ -45,7 +48,14 @@ class UnisenderGoEmailClient(IEmailClient):
                     "Email sent successfully via Unisender Go",
                     to_email=to_email,
                     subject=subject,
-                    email_message_id=response.message_id,
+                    job_id=response.job_id,
+                )
+                return EmailSendResultDTO(
+                    status=response.status,
+                    job_id=response.job_id,
+                    emails=response.emails,
+                    tags=response.tags,
                 )
             except UnisenderGoError as e:
                 logger.exception("Failed to send email via Unisender Go", to_email=to_email, error=str(e))
+                raise

@@ -15,6 +15,7 @@ from app.dtos import (
 )
 from app.interfaces import INotificationController
 from app.interfaces.booking import IBookingDatabaseAdapter
+from app.interfaces.events import EventType, IEventsAdapter
 from app.interfaces.mail import IEmailController
 from app.settings import Settings
 
@@ -45,11 +46,13 @@ class NotificationController(INotificationController):
         bot: Bot,
         settings: Settings,
         email_controller: IEmailController,
+        events_adapter: IEventsAdapter,
     ) -> None:
         self.db = db
         self.bot = bot
         self.settings = settings
         self.email_controller = email_controller
+        self.events_adapter = events_adapter
         self.jinja_env = Environment(
             loader=FileSystemLoader("app/templates"),
             autoescape=select_autoescape(),
@@ -152,6 +155,19 @@ class NotificationController(INotificationController):
                     text=notification_text,
                     link_preview_options=LinkPreviewOptions(is_disabled=True),
                 )
+                await self.events_adapter.send_event(
+                    booking_uid=booking.uid,
+                    event=EventType.NOTIFICATION_TELEGRAM_SENT,
+                    data={
+                        "users": [
+                            {
+                                "email": user.email,
+                                "role": "organizer",
+                            },
+                        ],
+                        "trigger_event": trigger_event,
+                    },
+                )
             except Exception:
                 logger.exception("Error sending telegram notification", email=user.email, trigger_event=trigger_event)
 
@@ -189,6 +205,7 @@ class NotificationController(INotificationController):
     async def _send_email_notification(
         self,
         *,
+        booking: BookingDTO,
         recipient_email: str,
         role: str,
         trigger_event: TriggerEvent,
@@ -205,7 +222,26 @@ class NotificationController(INotificationController):
             template = self.jinja_env.get_template(template_name)
             html_content = template.render(**context)
             logger.info(f"Sending email to {role}", email=recipient_email, trigger_event=trigger_event)
-            await self.email_controller.send_email(to_email=recipient_email, subject=subject, html_content=html_content)
+            email_send_result = await self.email_controller.send_email(
+                booking=booking,
+                to_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+            )
+            await self.events_adapter.send_event(
+                booking_uid=booking.uid,
+                event=EventType.NOTIFICATION_EMAIL_SENT,
+                data={
+                    "users": [
+                        {
+                            "email": recipient_email,
+                            "role": role,
+                        },
+                    ],
+                    "job_id": email_send_result.job_id,
+                    "trigger_event": trigger_event,
+                },
+            )
         except Exception:
             logger.exception(f"Error sending email to {role}")
 
@@ -228,6 +264,7 @@ class NotificationController(INotificationController):
         )
 
         await self._send_email_notification(
+            booking=booking,
             recipient_email=organizer.email,
             role="organizer",
             trigger_event=trigger_event,
@@ -264,6 +301,7 @@ class NotificationController(INotificationController):
         )
 
         await self._send_email_notification(
+            booking=booking,
             recipient_email=booking.client.email,
             role="client",
             trigger_event=trigger_event,
@@ -312,10 +350,30 @@ class NotificationController(INotificationController):
                 offer_url=self.settings.offer_url,
                 support_email=self.settings.support_email,
             )
-            await self.email_controller.send_email(
+            email_send_result = await self.email_controller.send_email(
+                booking=booking,
                 to_email=booking.client.email,
                 subject="⚠️ Ваша запись не может быть подтверждена",
                 html_content=html_content,
+            )
+            await self.events_adapter.send_event(
+                booking_uid=booking.uid,
+                event=EventType.NOTIFICATION_EMAIL_SENT,
+                data={
+                    "users": [
+                        {
+                            "email": booking.client.email,
+                            "role": "client",
+                        },
+                    ],
+                    "job_id": email_send_result.job_id,
+                    "available_from": available_from,
+                    "has_active_booking": has_active_booking,
+                    "active_booking_start": active_booking_start,
+                    "previous_meeting_dates": previous_meeting_dates,
+                    "rejection_reasons": rejection_reasons,
+                    "trigger_event": TriggerEvent.BOOKING_REJECTED,
+                },
             )
         except Exception:
             logger.exception(

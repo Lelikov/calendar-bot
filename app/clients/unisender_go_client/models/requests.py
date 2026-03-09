@@ -10,6 +10,7 @@ class SendMessageRequest(BaseModel):
     from_address: str | EmailAddress
     subject: str
     reply_address: str | EmailAddress | None = None
+    booking_uid: str | None = None
     plain_body: str | None = None
     html_body: str | None = None
     attachments: list[Attachment] | None = None
@@ -26,13 +27,10 @@ class SendMessageRequest(BaseModel):
     def model_dump(self, **_: Any) -> dict[str, Any]:  # noqa: C901
         message: dict[str, Any] = {}
 
-        # Recipients
         recipients = []
         for recipient in self.to:
-            if isinstance(recipient, EmailAddress):
-                recipients.append({"email": recipient.email})
-            else:
-                recipients.append({"email": recipient})
+            email = recipient.email if isinstance(recipient, EmailAddress) else recipient
+            recipients.append({"email": email, "metadata": {"booking_uid": str(self.booking_uid)}})
         message["recipients"] = recipients
 
         # Body

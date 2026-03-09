@@ -1,3 +1,4 @@
+from app.dtos import BookingDTO, EmailSendResultDTO
 from app.interfaces.mail import IEmailClient
 from app.settings import Settings
 
@@ -10,8 +11,15 @@ class EmailController:
         self.reply_to_email = settings.reply_to_email
         self.reply_to_email_name = settings.reply_to_email_name
 
-    async def send_email(self, to_email: str, subject: str, html_content: str) -> None:
-        await self.client.send_email(
+    async def send_email(
+        self,
+        booking: BookingDTO,
+        to_email: str,
+        subject: str,
+        html_content: str,
+    ) -> EmailSendResultDTO:
+        return await self.client.send_email(
+            booking=booking,
             to_email=to_email,
             from_email=self.from_email,
             from_email_name=self.from_email_name,
