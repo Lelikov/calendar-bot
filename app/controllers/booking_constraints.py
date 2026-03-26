@@ -7,7 +7,6 @@ from app.interfaces.booking_constraints import BookingConstraintsValidationResul
 MIN_DAYS_BETWEEN_BOOKINGS = 7
 MAX_BOOKINGS_PER_MONTH = 2
 MAX_BOOKINGS_PER_YEAR = 10
-INACTIVE_BOOKING_STATUSES = {"cancelled", "rejected"}
 
 
 class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
@@ -18,9 +17,7 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
         attendee_bookings: list[AttendeeBookingDTO],
     ) -> BookingConstraintsValidationResult:
         active_bookings = [
-            attendee_booking
-            for attendee_booking in attendee_bookings
-            if attendee_booking.status.lower() not in INACTIVE_BOOKING_STATUSES
+            attendee_booking for attendee_booking in attendee_bookings if not attendee_booking.bad_connection
         ]
 
         other_active_bookings = [

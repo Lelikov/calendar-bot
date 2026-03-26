@@ -177,3 +177,4 @@ class AttendeeBookingDTO:
     start_time: datetime
     end_time: datetime
     status: str
+    bad_connection: bool = False

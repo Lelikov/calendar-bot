@@ -27,7 +27,8 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
                        b."startTime",
                        b."endTime",
                        a.name,
-                       a.email
+                       a.email,
+                       COALESCE(a."badConnection", FALSE) AS "badConnection"
                 FROM public."Booking" b
                          LEFT JOIN "Attendee" a ON a."bookingId" = b.id
                 WHERE regexp_replace(lower(a.email), '[+][^@]*@', '@') = :normalized_email
@@ -42,6 +43,7 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
                 start_time=row["startTime"].replace(tzinfo=UTC),
                 end_time=row["endTime"].replace(tzinfo=UTC),
                 status=row["status"],
+                bad_connection=row["badConnection"],
             )
             for row in rows
         ]
