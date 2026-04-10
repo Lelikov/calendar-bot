@@ -7,6 +7,7 @@ from app.interfaces.booking_constraints import BookingConstraintsValidationResul
 MIN_DAYS_BETWEEN_BOOKINGS = 7
 MAX_BOOKINGS_PER_MONTH = 2
 MAX_BOOKINGS_PER_YEAR = 10
+MONTHS_AFTER_CANCELLATION = 2
 
 
 class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
@@ -16,6 +17,25 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
         booking: BookingDTO,
         attendee_bookings: list[AttendeeBookingDTO],
     ) -> BookingConstraintsValidationResult:
+        last_cancelled_booking = max(
+            (
+                attendee_booking
+                for attendee_booking in attendee_bookings
+                if attendee_booking.status == "cancelled" and attendee_booking.booking_uid != booking.uid
+            ),
+            key=lambda attendee_booking: attendee_booking.start_time,
+            default=None,
+        )
+        if last_cancelled_booking:
+            available_from_after_cancel = self._add_months(last_cancelled_booking.start_time, MONTHS_AFTER_CANCELLATION)
+            if booking.start_time < available_from_after_cancel:
+                return {
+                    "is_allowed": False,
+                    "available_from": available_from_after_cancel,
+                    "rejection_type": "cancelled_booking",
+                    "active_booking_start": None,
+                }
+
         active_bookings = [
             attendee_booking for attendee_booking in attendee_bookings if not attendee_booking.bad_connection
         ]
@@ -23,8 +43,6 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
         other_active_bookings = [
             attendee_booking for attendee_booking in active_bookings if attendee_booking.booking_uid != booking.uid
         ]
-
-        available_dates: list[datetime.datetime] = [booking.start_time]
 
         nearest_future_booking = min(
             (
@@ -50,6 +68,8 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
             if attendee_booking.start_time.year == booking.start_time.year
             and attendee_booking.start_time.month == booking.start_time.month
         ]
+        available_dates: list[datetime.datetime] = [booking.start_time]
+
         is_monthly_limit_violated = len(monthly_bookings) > MAX_BOOKINGS_PER_MONTH
         if is_monthly_limit_violated:
             available_dates.append(self._get_next_month_start(booking.start_time))
@@ -96,6 +116,13 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
         if target_date.month == 12:
             return target_date.replace(year=target_date.year + 1, month=1, day=1, hour=0, minute=0)
         return target_date.replace(month=target_date.month + 1, day=1, hour=0, minute=0)
+
+    @staticmethod
+    def _add_months(target_date: datetime.datetime, months: int) -> datetime.datetime:
+        month = target_date.month - 1 + months
+        year = target_date.year + month // 12
+        month = month % 12 + 1
+        return target_date.replace(year=year, month=month)
 
     @staticmethod
     def _resolve_rejection_type(

@@ -32,6 +32,7 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
                 FROM public."Booking" b
                          LEFT JOIN "Attendee" a ON a."bookingId" = b.id
                 WHERE regexp_replace(lower(a.email), '[+][^@]*@', '@') = :normalized_email
+                  AND (b.rescheduled IS NULL or b.rescheduled = FALSE)
                 """
         rows = await self.sql.fetch_all(query, {"normalized_email": normalized_email})
         return [

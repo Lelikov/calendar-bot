@@ -108,6 +108,13 @@ class NotificationController(INotificationController):
                 f"С момента вашей последней встречи{date_part} прошло менее 7 календарных дней, поэтому мы не "
                 f"можем записать вас на консультацию с психологом-волонтёром."
             )
+        if rejection_type == "cancelled_booking":
+            date_part = f" ({last_meeting_date})" if last_meeting_date else ""
+            return (
+                f"Ваша последняя запись{date_part} была отменена. По правилам проекта, следующая консультация "
+                "возможна не ранее чем через 2 месяца после отмены, поэтому мы не можем записать вас "
+                "на консультацию с психологом-волонтёром."
+            )
         return "К сожалению, сейчас мы не можем подтвердить вашу запись."
 
     def _calculate_duration(self, start_time: datetime, end_time: datetime) -> str:

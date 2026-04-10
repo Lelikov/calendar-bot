@@ -11,7 +11,8 @@ if TYPE_CHECKING:
 class BookingConstraintsValidationResult(TypedDict):
     is_allowed: bool
     available_from: datetime.datetime
-    rejection_type: str | None  # "has_active_booking" | "month_limit" | "year_limit" | "min_interval" | None
+    rejection_type: str | None  # "has_active_booking" | "month_limit" |
+    # "year_limit" | "min_interval" | "cancelled_booking" | None
     active_booking_start: datetime.datetime | None
 
 
