@@ -40,10 +40,8 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
             return {
                 "is_allowed": False,
                 "available_from": nearest_future_booking.end_time,
-                "has_active_booking": True,
+                "rejection_type": "has_active_booking",
                 "active_booking_start": nearest_future_booking.start_time,
-                "rejection_reasons": ["У вас уже есть подтверждённая будущая консультация."],
-                "rejection_type": None,
             }
 
         monthly_bookings = [
@@ -75,33 +73,22 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
                 available_dates.append(attendee_booking.start_time + datetime.timedelta(days=MIN_DAYS_BETWEEN_BOOKINGS))
 
         if is_monthly_limit_violated or is_yearly_limit_violated or is_weekly_limit_violated:
-            rejection_reasons = self._build_rejection_reasons(
-                is_monthly_limit_violated=is_monthly_limit_violated,
-                is_yearly_limit_violated=is_yearly_limit_violated,
-                is_weekly_limit_violated=is_weekly_limit_violated,
-            )
-            rejection_type = self._resolve_rejection_type(
-                is_monthly_limit_violated=is_monthly_limit_violated,
-                is_yearly_limit_violated=is_yearly_limit_violated,
-                is_weekly_limit_violated=is_weekly_limit_violated,
-            )
-
             return {
                 "is_allowed": False,
                 "available_from": max(available_dates),
-                "has_active_booking": False,
+                "rejection_type": self._resolve_rejection_type(
+                    is_monthly_limit_violated=is_monthly_limit_violated,
+                    is_yearly_limit_violated=is_yearly_limit_violated,
+                    is_weekly_limit_violated=is_weekly_limit_violated,
+                ),
                 "active_booking_start": None,
-                "rejection_reasons": rejection_reasons,
-                "rejection_type": rejection_type,
             }
 
         return {
             "is_allowed": True,
             "available_from": booking.start_time,
-            "has_active_booking": False,
-            "active_booking_start": None,
-            "rejection_reasons": [],
             "rejection_type": None,
+            "active_booking_start": None,
         }
 
     @staticmethod
@@ -109,30 +96,6 @@ class BookingConstraintsAnalyzer(IBookingConstraintsAnalyzer):
         if target_date.month == 12:
             return target_date.replace(year=target_date.year + 1, month=1, day=1, hour=0, minute=0)
         return target_date.replace(month=target_date.month + 1, day=1, hour=0, minute=0)
-
-    @staticmethod
-    def _build_rejection_reasons(
-        *,
-        is_monthly_limit_violated: bool,
-        is_yearly_limit_violated: bool,
-        is_weekly_limit_violated: bool,
-    ) -> list[str]:
-        rejection_reasons: list[str] = []
-
-        if is_yearly_limit_violated:
-            rejection_reasons.append(
-                f"В текущем году уже достигнут лимит: не более {MAX_BOOKINGS_PER_YEAR} консультаций.",
-            )
-        if is_monthly_limit_violated:
-            rejection_reasons.append(
-                f"В текущем месяце уже достигнут лимит: не более {MAX_BOOKINGS_PER_MONTH} консультаций.",
-            )
-        if is_weekly_limit_violated:
-            rejection_reasons.append(
-                f"Между консультациями должно проходить не менее {MIN_DAYS_BETWEEN_BOOKINGS} календарных дней.",
-            )
-
-        return rejection_reasons
 
     @staticmethod
     def _resolve_rejection_type(

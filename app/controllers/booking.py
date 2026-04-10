@@ -185,11 +185,9 @@ class BookingController:
         await self.notification_controller.notify_client_booking_rejected(
             booking=booking,
             available_from=validation_result["available_from"],
-            has_active_booking=validation_result["has_active_booking"],
             previous_meeting_dates=previous_meeting_dates,
+            rejection_type=validation_result["rejection_type"],
             active_booking_start=validation_result["active_booking_start"],
-            rejection_reasons=validation_result["rejection_reasons"],
-            rejection_type=validation_result.get("rejection_type"),
         )
 
         await self.db.delete_booking_and_attendee_by_booking_id(booking_id=booking.id)

@@ -10,7 +10,13 @@ class EmailController:
         self.reply_to_email = settings.reply_to_email
         self.reply_to_email_name = settings.reply_to_email_name
 
-    async def send_email(self, to_email: str, subject: str, html_content: str) -> None:
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str | None = None,
+        context: dict | None = None,
+        template_id: str | None = None,
+    ) -> None:
         await self.client.send_email(
             to_email=to_email,
             from_email=self.from_email,
@@ -18,5 +24,6 @@ class EmailController:
             reply_to_email=self.reply_to_email,
             reply_to_email_name=self.reply_to_email_name,
             subject=subject,
-            html_content=html_content,
+            context=context,
+            template_id=template_id,
         )

@@ -10,17 +10,25 @@ class IEmailClient(Protocol):
     async def send_email(
         self,
         to_email: str,
-        from_email: str,
-        from_email_name: str,
-        reply_to_email: str,
-        reply_to_email_name: str,
-        subject: str,
-        html_content: str,
+        from_email: str | None = None,
+        from_email_name: str | None = None,
+        reply_to_email: str | None = None,
+        reply_to_email_name: str | None = None,
+        subject: str | None = None,
+        html_content: str | None = None,
+        context: dict | None = None,
+        template_id: str | None = None,
     ) -> None: ...
 
 
 class IEmailController(Protocol):
-    async def send_email(self, to_email: str, subject: str, html_content: str) -> None: ...
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str | None = None,
+        context: dict | None = None,
+        template_id: str | None = None,
+    ) -> None: ...
 
 
 class IMailWebhookController(Protocol):

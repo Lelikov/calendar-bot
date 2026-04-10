@@ -8,10 +8,13 @@ from app.clients.models import Attachment, EmailAddress
 class SendMessageRequest(BaseModel):
     to: list[str | EmailAddress] = Field(..., min_length=1)
     from_address: str | EmailAddress
-    subject: str
+    subject: str | None = None
     reply_address: str | EmailAddress | None = None
-    plain_body: str | None = None
+    context: dict | None = None
+    template_engine: str = "simple"
+    template_id: str | None = None
     html_body: str | None = None
+    plain_body: str | None = None
     attachments: list[Attachment] | None = None
     headers: dict[str, str] | None = None
     track_links: int | None = 0
@@ -19,8 +22,8 @@ class SendMessageRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_body(self) -> Self:
-        if self.plain_body is None and self.html_body is None:
-            raise ValueError("At least one of plain_body or html_body must be provided")
+        if self.plain_body is None and self.html_body is None and self.template_id is None:
+            raise ValueError("At least one of plain_body or html_body or template_id must be provided")
         return self
 
     def model_dump(self, **_: Any) -> dict[str, Any]:  # noqa: C901
@@ -30,9 +33,9 @@ class SendMessageRequest(BaseModel):
         recipients = []
         for recipient in self.to:
             if isinstance(recipient, EmailAddress):
-                recipients.append({"email": recipient.email})
+                recipients.append({"email": recipient.email, "substitutions": self.context})
             else:
-                recipients.append({"email": recipient})
+                recipients.append({"email": recipient, "substitutions": self.context})
         message["recipients"] = recipients
 
         # Body
@@ -68,6 +71,11 @@ class SendMessageRequest(BaseModel):
 
         if self.headers:
             message["headers"] = self.headers
+
+        if self.template_engine:
+            message["template_engine"] = self.template_engine
+        if self.template_id:
+            message["template_id"] = self.template_id
 
         if self.track_links is not None:
             message["track_links"] = self.track_links

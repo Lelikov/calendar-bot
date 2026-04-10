@@ -38,9 +38,7 @@ class INotificationController(Protocol):
         *,
         booking: BookingDTO,
         available_from: datetime.datetime,
-        has_active_booking: bool,
         previous_meeting_dates: list[datetime.datetime],
-        active_booking_start: datetime.datetime | None,
-        rejection_reasons: list[str],
         rejection_type: str | None,
+        active_booking_start: datetime.datetime | None,
     ) -> None: ...

@@ -19,12 +19,14 @@ class UnisenderGoEmailClient(IEmailClient):
     async def send_email(
         self,
         to_email: str,
-        from_email: str,
-        from_email_name: str | None,
-        reply_to_email: str | None,
-        reply_to_email_name: str | None,
-        subject: str,
-        html_content: str,
+        from_email: str | None = None,
+        from_email_name: str | None = None,
+        reply_to_email: str | None = None,
+        reply_to_email_name: str | None = None,
+        subject: str | None = None,
+        html_content: str | None = None,
+        context: dict | None = None,
+        template_id: str | None = None,
     ) -> None:
         async with UnisenderGoClient(
             api_url=self.api_url,
@@ -36,6 +38,8 @@ class UnisenderGoEmailClient(IEmailClient):
                 from_address=EmailAddress(email=from_email, name=from_email_name),
                 reply_address=EmailAddress(email=reply_to_email, name=reply_to_email_name) if reply_to_email else None,
                 subject=subject,
+                context=context,
+                template_id=template_id,
                 html_body=html_content,
             )
 
