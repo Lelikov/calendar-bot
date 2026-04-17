@@ -304,7 +304,7 @@ class NotificationController(INotificationController):
             meeting_url=meeting_url,
             additional_context={
                 "ClientName": booking.client.name,
-                "CancelLink": f"{self.settings.booking_host_url}/booking/{booking.uid}",
+                "CancelLink": f"{self.settings.booking_host_url.replace('https://', '')}/booking/{booking.uid}",
             },
         )
 
