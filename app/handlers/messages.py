@@ -166,6 +166,10 @@ async def meeting_test(
     query = "SELECT name, email FROM users WHERE locked = FALSE AND telegram_chat_id = :telegram_chat_id "
     row = await sql.fetch_one(query, {"telegram_chat_id": message.from_user.id})
     if not row:
+        logger.error(f"User telegram_chat_id={message.from_user.id} not found")
+        await message.answer(
+            f"Вы не можете создавать встречи. Обратитесь к администратору. telegram_chat_id={message.from_user.id}",
+        )
         return None
 
     if not args_raw:
@@ -189,19 +193,29 @@ async def meeting_test(
         await message.answer(f"Почта второго участника {client_email} указана неправильно")
         return None
 
-    await _send_meeting_test_links(
-        message=message,
-        chat_controller=chat_controller,
-        shortener=shortener,
-        settings=settings,
-        client_email=client_email,
-        client_name=client_name,
-        organizer_name=row["name"],
-        organizer_email=row["email"],
-        meeting_uid=str(uuid.uuid4()),
-        start_time=int(time.time()),
-        duration_minutes=60,
-    )
+    if client_email == row["email"]:
+        await message.answer(
+            f"Почта второго участника {client_email} не должна совпадать с вашей почтой {row['email']}",
+        )
+        return None
+
+    try:
+        await _send_meeting_test_links(
+            message=message,
+            chat_controller=chat_controller,
+            shortener=shortener,
+            settings=settings,
+            client_email=client_email,
+            client_name=client_name,
+            organizer_name=row["name"],
+            organizer_email=row["email"],
+            meeting_uid=str(uuid.uuid4()),
+            start_time=int(time.time()),
+            duration_minutes=60,
+        )
+    except Exception as e:
+        logger.exception("Error while sending meeting_test links")
+        await message.answer(f"Ошибка при создании ссылки. Пожалуйста, обратитесь к администратору. Текст ошибки: {e}")
     return None
 
 
