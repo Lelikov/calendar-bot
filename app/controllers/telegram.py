@@ -27,7 +27,7 @@ class TelegramController:
         if self.settings.debug:
             logger.debug(f"Current bot info: {current_webhook_info}")
         try:
-            logger.info("Start setting webhook")
+            logger.info(f"Start setting webhook {base_webhook_url}{self.settings.webhook_path}")
             await self.bot.set_webhook(
                 f"{base_webhook_url}{self.settings.webhook_path}",
                 secret_token=self.settings.telegram_my_token,
@@ -35,6 +35,7 @@ class TelegramController:
                 max_connections=40 if self.settings.debug else 100,
                 request_timeout=60,
             )
+            logger.info("Webhook set")
             if self.settings.debug:
                 logger.debug(f"Updated bot info: {await check_webhook()}")
         except Exception:
