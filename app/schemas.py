@@ -63,7 +63,7 @@ class BookingEventPayload(BaseCalComModel):
     organizer: BookingEventOrganizer
     start_time: str
     title: str
-    uid: str
+    uid: str | None = None
     cancellation_reason: str | None = None
     new_organizer_email: str | None = Field(default=None, alias="rescheduledBy")
     reschedule_end_time: str | None = None

@@ -17,7 +17,7 @@ class TelegramController:
     async def _set_webhook(self, base_webhook_url: str) -> None:
         async def check_webhook() -> WebhookInfo | None:
             try:
-                return await self.bot.get_webhook_info()
+                return await self.bot.get_webhook_info(request_timeout=60)
             except Exception:
                 logger.exception("Can't get webhook info")
                 return None

@@ -41,7 +41,7 @@ wheels = [
 
 [[package]]
 name = "aiogram"
-version = "3.17.0"
+version = "3.29.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -51,9 +51,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/5e/a849ec3d64522e937906aa36b4b8f81bb7085928f9c0adea1b8f6ec02fad/aiogram-3.17.0.tar.gz", hash = "sha256:01bffbf43d6fb4a31e3c668a601bc7e71c2cf3919bd831ba6c179ef86034c2f4", size = 1371207, upload-time = "2025-01-02T00:45:37.706Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/e0/fe516e9c424858e44d190636563e0b9a8c0cc940032d43212d4def861f01/aiogram-3.29.0.tar.gz", hash = "sha256:17be0061174fd5b3aa494537f166c2f147b983ebef60d9ede2a3e8837af9c01e", size = 1895315, upload-time = "2026-06-14T17:25:24.998Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/1c/77268a6d9c6bb2e6b7ee66a15bd029fde317277a9a6b7a6cef17e7519546/aiogram-3.17.0-py3-none-any.whl", hash = "sha256:251738331107ce2a679a901354b1409b7544d9f030d8092dcc68f2bb3bb0c467", size = 610049, upload-time = "2025-01-02T00:45:34.191Z" },
+    { url = "https://files.pythonhosted.org/packages/02/1a/c56efc85cee9aca96de596253936590df163d2dfb0f8993e1db50f0c4a70/aiogram-3.29.0-py3-none-any.whl", hash = "sha256:f4b2c39d89c44e37998b4b4a8510d6914fc24f3d31125d6b3f6ea9589e67ec85", size = 803438, upload-time = "2026-06-14T17:25:23.064Z" },
 ]
 
 [[package]]
@@ -2034,7 +2034,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiogram", specifier = ">=3.17.0" },
+    { name = "aiogram", specifier = ">=3.29.0" },
     { name = "aiosmtplib", specifier = ">=5.0.0" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "babel", specifier = ">=2.17.0" },
