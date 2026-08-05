@@ -21,6 +21,13 @@ BOOKING_REMINDER_NOTIFICATION_KEY = "booking_reminder_notified"
 BOOKING_REMINDER_TTL_SECONDS = 60 * 60 * 24
 
 
+# Prefix that calendar-pay puts into cancellationReason. That field is the only one
+# Cal.com's cancel API accepts, so it is the only way to tell an automatic cancellation
+# of an unpaid booking from one made by a human. Tags after the prefix: "unpaid" means
+# the payment was started and abandoned, "abandoned" means it was never started.
+CALENDAR_PAY_CANCELLATION_PREFIX = "[calendar-pay:"
+
+
 class BookingController:
     def __init__(
         self,
@@ -239,6 +246,19 @@ class BookingController:
 
     async def _handle_cancelled(self, booking_event: BookingEventDTO) -> None:
         booking = await self.db.get_booking(booking_event.payload.uid)
+
+        # calendar-pay cancelled this booking because it was never paid for. Such a
+        # booking was never confirmed: creating it fires BOOKING_REQUESTED, which is
+        # not in TriggerEvent, so the organizer was never told about the meeting. The
+        # chat and the meeting URL do not exist either - those are created in
+        # _handle_created. There is nothing to announce and nothing to clean up, and a
+        # cancellation email plus a Telegram message would just be spam.
+        if (booking.cancellation_reason or "").startswith(CALENDAR_PAY_CANCELLATION_PREFIX):
+            logger.info(
+                "Skipping cancellation notifications: booking was cancelled by calendar-pay as unpaid",
+                cancellation_reason=booking.cancellation_reason,
+            )
+            return
 
         await self.notification_controller.notify_organizer(
             user=booking.user,
