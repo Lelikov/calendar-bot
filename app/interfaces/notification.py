@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     import datetime
 
-    from app.dtos import BookingDTO, TriggerEvent, UserDTO
+    from app.dtos import BookingDTO, CancellationRefund, TriggerEvent, UserDTO
 
 
 class INotificationController(Protocol):
@@ -31,6 +31,7 @@ class INotificationController(Protocol):
         booking: BookingDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
+        refund: CancellationRefund | None = None,
     ) -> None: ...
 
     async def notify_client_booking_rejected(

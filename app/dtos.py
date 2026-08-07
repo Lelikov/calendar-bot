@@ -8,6 +8,19 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
+class CancellationRefund(StrEnum):
+    """What happens to the money when a booking is cancelled.
+
+    Cal.com decides this at the moment of cancellation and sends it in the
+    BOOKING_CANCELLED webhook. A missing value means no money was involved at all: a free
+    event type, a booking older than the payment service, or an instance without it. That
+    is not the same as NONE, where the money was taken and stays with us.
+    """
+
+    FULL = "full"
+    NONE = "none"
+
+
 class TriggerEvent(StrEnum):
     BOOKING_CREATED = "BOOKING_CREATED"
     BOOKING_RESCHEDULED = "BOOKING_RESCHEDULED"
@@ -54,6 +67,7 @@ class BookingEventPayloadDTO:
     reschedule_end_time: str | None = None
     reschedule_start_time: str | None = None
     reschedule_uid: str | None = None
+    refund: CancellationRefund | None = None
 
 
 @dataclass(frozen=True, slots=True)

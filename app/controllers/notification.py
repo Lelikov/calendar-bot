@@ -9,6 +9,7 @@ from babel.dates import get_timezone_location
 
 from app.dtos import (
     BookingDTO,
+    CancellationRefund,
     TriggerEvent,
     UserDTO,
 )
@@ -24,6 +25,18 @@ TIME_FORMAT = "%d-%m-%Y, %H:%M"
 
 
 class NotificationController(INotificationController):
+    # Cancelling a paid booking: the client's email depends on whether the money comes
+    # back. Cal.com decides that and sends it in the webhook; here it only picks a
+    # template.
+    #
+    # This does not concern the organizer - their side never receives the money, so their
+    # cancellation email stays the single one from EMAIL_TEMPLATES. Bookings with no
+    # payment keep the old template too.
+    CLIENT_CANCELLED_TEMPLATES: ClassVar = {
+        CancellationRefund.FULL: "458af1da-2e60-11f1-ab1f-aa5f97242f68",
+        CancellationRefund.NONE: "6505ed3c-9245-11f1-9667-aec22e8f6b54",
+    }
+
     EMAIL_TEMPLATES: ClassVar = {
         "organizer": {
             TriggerEvent.BOOKING_CREATED: "e05d2280-3286-11f1-b49a-aa5f97242f68",
@@ -243,14 +256,22 @@ class NotificationController(INotificationController):
         role: str,
         trigger_event: TriggerEvent,
         context: dict,
+        template_id: str | None = None,
     ) -> None:
-        template_id = self.EMAIL_TEMPLATES.get(role, {}).get(trigger_event)
+        template_id = template_id or self.EMAIL_TEMPLATES.get(role, {}).get(trigger_event)
         if not template_id:
             logger.warning("No email template for trigger event", trigger_event=trigger_event, role=role)
             return
 
         try:
-            logger.info(f"Sending email to {role}", email=recipient_email, trigger_event=trigger_event)
+            # The template goes into the log: a cancellation now has two of them, and
+            # without it the log cannot tell whether the email promised a refund.
+            logger.info(
+                f"Sending email to {role}",
+                email=recipient_email,
+                trigger_event=trigger_event,
+                template_id=template_id,
+            )
             await self.email_controller.send_email(to_email=recipient_email, context=context, template_id=template_id)
         except Exception:
             logger.exception(f"Error sending email to {role}")
@@ -290,12 +311,30 @@ class NotificationController(INotificationController):
         await self.notify_organizer_telegram(user, booking, trigger_event, meeting_url)
         await self.notify_organizer_email(user, booking, trigger_event, meeting_url)
 
+    def _client_template_id(self, *, trigger_event: TriggerEvent, refund: CancellationRefund | None) -> str | None:
+        """Client email template for the cases where the plain event-to-template map is not enough.
+
+        Returns None both when no money was involved and when no template is configured
+        for this outcome yet; either way the old cancellation email goes out. Staying
+        silent instead would be worse - the client would not learn about the cancellation
+        at all.
+        """
+        if trigger_event != TriggerEvent.BOOKING_CANCELLED or refund is None:
+            return None
+
+        template_id = self.CLIENT_CANCELLED_TEMPLATES.get(refund)
+        if not template_id:
+            logger.warning("No cancellation email template for refund outcome", refund=refund)
+            return None
+        return template_id
+
     async def notify_client_email(
         self,
         *,
         booking: BookingDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
+        refund: CancellationRefund | None = None,
     ) -> None:
         context = self._prepare_email_context(
             booking=booking,
@@ -313,6 +352,7 @@ class NotificationController(INotificationController):
             role="client",
             trigger_event=trigger_event,
             context=context,
+            template_id=self._client_template_id(trigger_event=trigger_event, refund=refund),
         )
 
     async def notify_client(
@@ -320,11 +360,13 @@ class NotificationController(INotificationController):
         booking: BookingDTO,
         trigger_event: TriggerEvent,
         meeting_url: str | None = None,
+        refund: CancellationRefund | None = None,
     ) -> None:
         await self.notify_client_email(
             booking=booking,
             trigger_event=trigger_event,
             meeting_url=meeting_url,
+            refund=refund,
         )
 
     async def notify_client_booking_rejected(

@@ -8,6 +8,7 @@ from app.dtos import (
     BookingEventDTO,
     BookingEventOrganizerDTO,
     BookingEventPayloadDTO,
+    CancellationRefund,
     MailWebhookDeliveryInfoDTO,
     MailWebhookEventDataDTO,
     MailWebhookEventDTO,
@@ -69,6 +70,15 @@ class BookingEventPayload(BaseCalComModel):
     reschedule_end_time: str | None = None
     reschedule_start_time: str | None = None
     reschedule_uid: str | None = None
+    # Kept as a plain string rather than the enum: an unknown value should cost us one
+    # email of the old kind, not a rejected delivery of the whole event with a 422.
+    refund: str | None = None
+
+    def _parse_refund(self) -> CancellationRefund | None:
+        try:
+            return CancellationRefund(self.refund)
+        except ValueError:
+            return None
 
     def to_dto(self) -> BookingEventPayloadDTO:
         return BookingEventPayloadDTO(
@@ -84,6 +94,7 @@ class BookingEventPayload(BaseCalComModel):
             reschedule_end_time=self.reschedule_end_time,
             reschedule_start_time=self.reschedule_start_time,
             reschedule_uid=self.reschedule_uid,
+            refund=self._parse_refund(),
         )
 
 

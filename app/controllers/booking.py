@@ -266,10 +266,14 @@ class BookingController:
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
         )
+        # Cal.com decides the refund at the moment of cancellation and sends it along with
+        # the event. We could not work it out again here: the rule depends on how long was
+        # left before the meeting back then, and by now that is a different number.
         await self.notification_controller.notify_client(
             booking=booking,
             trigger_event=booking_event.trigger_event,
             meeting_url=None,
+            refund=booking_event.payload.refund,
         )
         try:
             await self.chat_controller.delete_chat(channel_id=booking.uid)
