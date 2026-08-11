@@ -252,11 +252,21 @@ class BookingController:
         # not in TriggerEvent, so the organizer was never told about the meeting. The
         # chat and the meeting URL do not exist either - those are created in
         # _handle_created. There is nothing to announce and nothing to clean up, and a
-        # cancellation email plus a Telegram message would just be spam.
-        if (booking.cancellation_reason or "").startswith(CALENDAR_PAY_CANCELLATION_PREFIX):
+        # cancellation email plus a Telegram message would just be spam - worse, the
+        # client's one promises a refund of money that was never taken.
+        #
+        # The reason is taken from the event and not from the database on purpose.
+        # Cal.com sends this webhook BEFORE it writes the cancellation to the booking
+        # (handleCancelBooking.ts: sendPayload at :468, the update at :541 and :588),
+        # so a reader that is quick enough finds the row still without a reason and
+        # announces the cancellation anyway. That is exactly what happened in
+        # production on 11 Aug: thirteen people got letters about a refund of money
+        # they had never paid.
+        cancellation_reason = booking_event.payload.cancellation_reason or booking.cancellation_reason
+        if (cancellation_reason or "").startswith(CALENDAR_PAY_CANCELLATION_PREFIX):
             logger.info(
                 "Skipping cancellation notifications: booking was cancelled by calendar-pay as unpaid",
-                cancellation_reason=booking.cancellation_reason,
+                cancellation_reason=cancellation_reason,
             )
             return
 
