@@ -95,16 +95,19 @@ class MailWebhookDeliveryInfoDTO:
 
 @dataclass(frozen=True, slots=True)
 class MailWebhookEventDataDTO:
-    job_id: str
-    email: str
-    status: str
-    event_time: str
-    delivery_info: MailWebhookDeliveryInfoDTO
+    # Every field is optional in the Unisender Go callback format: a
+    # transactional_spam_block event carries none of them.
+    job_id: str | None = None
+    email: str | None = None
+    status: str | None = None
+    event_time: str | None = None
+    metadata: dict[str, str] | None = None
+    delivery_info: MailWebhookDeliveryInfoDTO | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class MailWebhookUserEventDTO:
-    event_name: str
+    event_name: str | None
     event_data: MailWebhookEventDataDTO
 
 
@@ -118,6 +121,21 @@ class MailWebhookEventsByUserDTO:
 class MailWebhookEventDTO:
     auth: str
     events_by_user: list[MailWebhookEventsByUserDTO]
+
+
+@dataclass(frozen=True, slots=True)
+class EmailEventDTO:
+    """A delivery status of one email, already tied to a booking."""
+
+    booking_uid: str
+    job_id: str
+    email: str
+    status: str
+    event_time: datetime
+    trigger_event: str | None = None
+    role: str | None = None
+    delivery_status: str | None = None
+    destination_response: str | None = None
 
 
 class ResponseDTO(TypedDict):

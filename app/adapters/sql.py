@@ -19,6 +19,13 @@ class SqlExecutor:
         await self.session.execute(text(query), values)
         await self.session.commit()
 
+    async def execute_returning(self, query: str, values: dict) -> RowMapping | None:
+        """Write that has to be committed and read back, such as INSERT ... RETURNING."""
+        result = await self.session.execute(text(query), values)
+        row = result.mappings().first()
+        await self.session.commit()
+        return row
+
     async def execute_in_transaction(self, statements: list[tuple[str, dict]]) -> None:
         if self.session.in_transaction():
             for query, values in statements:

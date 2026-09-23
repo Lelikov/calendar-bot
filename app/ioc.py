@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.adapters.db import BookingDatabaseAdapter
 from app.adapters.email import UnisenderGoEmailClient
+from app.adapters.email_event import EmailEventDatabaseAdapter
 from app.adapters.get_stream import GetStreamAdapter
 from app.adapters.shortener import UrlShortenerAdapter
 from app.adapters.sql import SqlExecutor
@@ -28,7 +29,12 @@ from app.interfaces.booking import IBookingController, IBookingDatabaseAdapter
 from app.interfaces.booking_constraints import IBookingConstraintsAnalyzer
 from app.interfaces.cache import ICacheController
 from app.interfaces.chat import IChatClient, IChatController
-from app.interfaces.mail import IEmailClient, IEmailController, IMailWebhookController
+from app.interfaces.mail import (
+    IEmailClient,
+    IEmailController,
+    IEmailEventDatabaseAdapter,
+    IMailWebhookController,
+)
 from app.interfaces.meeting import IMeetingController, IMeetWebhookController, INotificationStateController
 from app.interfaces.notification import INotificationController
 from app.interfaces.sql import ISqlExecutor
@@ -97,9 +103,20 @@ class AppProvider(Provider):
     def provide_cache_controller(self, cache_client: Redis) -> ICacheController:
         return CacheController(client=cache_client)
 
-    @provide(scope=Scope.APP)
-    def provide_mail_webhook_controller(self, bot: Bot, settings: Settings) -> IMailWebhookController:
-        return MailWebhookController(bot=bot, settings=settings)
+    @provide(scope=Scope.REQUEST)
+    def provide_email_event_db(self, sql: ISqlExecutor) -> IEmailEventDatabaseAdapter:
+        return EmailEventDatabaseAdapter(sql)
+
+    # REQUEST-scoped because of the database adapter: the session it writes through
+    # lives for one request.
+    @provide(scope=Scope.REQUEST)
+    def provide_mail_webhook_controller(
+        self,
+        bot: Bot,
+        settings: Settings,
+        email_event_db: IEmailEventDatabaseAdapter,
+    ) -> IMailWebhookController:
+        return MailWebhookController(bot=bot, settings=settings, email_event_db=email_event_db)
 
     @provide(scope=Scope.APP)
     def provide_email_client(self, settings: Settings) -> IEmailClient:

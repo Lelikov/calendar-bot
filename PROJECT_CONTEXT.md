@@ -40,7 +40,7 @@ Interfaces are grouped by domain in `app/interfaces` and re-exported from `app/i
 - Booking constraints: `IBookingConstraintsAnalyzer`
 - Chat: `IChatClient`, `IChatController`
 - Meeting: `IMeetingController`, `IMeetWebhookController`, `INotificationStateController`
-- Mail: `IEmailClient`, `IEmailController`, `IMailWebhookController`
+- Mail: `IEmailClient`, `IEmailController`, `IMailWebhookController`, `IEmailEventDatabaseAdapter`
 - Notification: `INotificationController`
 - Cache: `ICacheController`
 - Infra: `ISqlExecutor`, `IUrlShortener`, `ITelegramController`
@@ -77,6 +77,8 @@ Interfaces are grouped by domain in `app/interfaces` and re-exported from `app/i
 - DB/SQL
   - `adapters/sql.py`: `SqlExecutor` over SQLAlchemy `AsyncSession`.
   - `adapters/db.py`: `BookingDatabaseAdapter` with booking/user queries and mutation methods.
+  - `adapters/email_event.py`: `EmailEventDatabaseAdapter` storing email delivery statuses in the
+    service-owned `email_event` table (DDL in `migrations/`, applied manually).
 - Messaging / Chat
   - `adapters/get_stream.py`: GetStream implementation of `IChatClient` (+ token/user-id encode/decode helpers).
 - Meetings / URLs

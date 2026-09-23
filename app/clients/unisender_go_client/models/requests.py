@@ -17,6 +17,9 @@ class SendMessageRequest(BaseModel):
     plain_body: str | None = None
     attachments: list[Attachment] | None = None
     headers: dict[str, str] | None = None
+    # Unisender Go returns these keys back in the delivery webhooks, which is the only
+    # way to tell which booking an event belongs to.
+    metadata: dict[str, str] | None = None
     track_links: int | None = 0
     track_read: int | None = 0
 
@@ -32,10 +35,11 @@ class SendMessageRequest(BaseModel):
         # Recipients
         recipients = []
         for recipient in self.to:
-            if isinstance(recipient, EmailAddress):
-                recipients.append({"email": recipient.email, "substitutions": self.context})
-            else:
-                recipients.append({"email": recipient, "substitutions": self.context})
+            email = recipient.email if isinstance(recipient, EmailAddress) else recipient
+            recipient_data: dict[str, Any] = {"email": email, "substitutions": self.context}
+            if self.metadata:
+                recipient_data["metadata"] = self.metadata
+            recipients.append(recipient_data)
         message["recipients"] = recipients
 
         # Body

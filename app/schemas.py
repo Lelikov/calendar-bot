@@ -121,11 +121,18 @@ class MailWebhookDeliveryInfo(BaseModel):
 
 
 class MailWebhookEventData(BaseModel):
-    job_id: str
-    email: str
-    status: str
-    event_time: str
-    delivery_info: MailWebhookDeliveryInfo
+    # Everything here is optional in the Unisender Go callback format. A
+    # transactional_spam_block event shares the envelope but carries a completely
+    # different payload, and delivery_info is only sent when the webhook is registered
+    # with delivery_info=1. Requiring any of it answers the whole call with a 422, and
+    # Unisender retries such a call for 24 hours and then disables the handler - taking
+    # the delivery statuses down with it.
+    job_id: str | None = None
+    email: str | None = None
+    status: str | None = None
+    event_time: str | None = None
+    metadata: dict[str, str] | None = None
+    delivery_info: MailWebhookDeliveryInfo | None = None
 
     def to_dto(self) -> MailWebhookEventDataDTO:
         return MailWebhookEventDataDTO(
@@ -133,13 +140,14 @@ class MailWebhookEventData(BaseModel):
             email=self.email,
             status=self.status,
             event_time=self.event_time,
-            delivery_info=self.delivery_info.to_dto(),
+            metadata=self.metadata,
+            delivery_info=self.delivery_info.to_dto() if self.delivery_info else None,
         )
 
 
 class MailWebhookUserEvent(BaseModel):
-    event_name: str
-    event_data: MailWebhookEventData
+    event_name: str | None = None
+    event_data: MailWebhookEventData = MailWebhookEventData()
 
     def to_dto(self) -> MailWebhookUserEventDTO:
         return MailWebhookUserEventDTO(

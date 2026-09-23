@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Protocol
 
 
 if TYPE_CHECKING:
-    from app.dtos import MailWebhookEventDTO
+    from app.dtos import EmailEventDTO, MailWebhookEventDTO
 
 
 class IEmailClient(Protocol):
@@ -18,6 +18,7 @@ class IEmailClient(Protocol):
         html_content: str | None = None,
         context: dict | None = None,
         template_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> None: ...
 
 
@@ -28,8 +29,13 @@ class IEmailController(Protocol):
         subject: str | None = None,
         context: dict | None = None,
         template_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> None: ...
 
 
 class IMailWebhookController(Protocol):
     async def handle_webhook(self, event: MailWebhookEventDTO) -> None: ...
+
+
+class IEmailEventDatabaseAdapter(Protocol):
+    async def save_event(self, event: EmailEventDTO) -> bool: ...

@@ -27,6 +27,7 @@ class UnisenderGoEmailClient(IEmailClient):
         html_content: str | None = None,
         context: dict | None = None,
         template_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> None:
         async with UnisenderGoClient(
             api_url=self.api_url,
@@ -41,6 +42,7 @@ class UnisenderGoEmailClient(IEmailClient):
                 context=context,
                 template_id=template_id,
                 html_body=html_content,
+                metadata=metadata,
             )
 
             try:

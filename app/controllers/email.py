@@ -16,6 +16,7 @@ class EmailController:
         subject: str | None = None,
         context: dict | None = None,
         template_id: str | None = None,
+        metadata: dict[str, str] | None = None,
     ) -> None:
         await self.client.send_email(
             to_email=to_email,
@@ -26,4 +27,5 @@ class EmailController:
             subject=subject,
             context=context,
             template_id=template_id,
+            metadata=metadata,
         )

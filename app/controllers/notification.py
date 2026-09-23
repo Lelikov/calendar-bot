@@ -249,6 +249,19 @@ class NotificationController(INotificationController):
 
         return context
 
+    @staticmethod
+    def _email_metadata(*, booking_uid: str, trigger_event: TriggerEvent, role: str) -> dict[str, str]:
+        """Keys Unisender Go echoes back in the delivery webhooks.
+
+        Without booking_uid a webhook event cannot be tied to a meeting, and the handler
+        drops it - the same webhook channel also carries emails of other systems.
+        """
+        return {
+            "booking_uid": booking_uid,
+            "trigger_event": str(trigger_event),
+            "role": role,
+        }
+
     async def _send_email_notification(
         self,
         *,
@@ -256,6 +269,7 @@ class NotificationController(INotificationController):
         role: str,
         trigger_event: TriggerEvent,
         context: dict,
+        booking_uid: str,
         template_id: str | None = None,
     ) -> None:
         template_id = template_id or self.EMAIL_TEMPLATES.get(role, {}).get(trigger_event)
@@ -272,7 +286,12 @@ class NotificationController(INotificationController):
                 trigger_event=trigger_event,
                 template_id=template_id,
             )
-            await self.email_controller.send_email(to_email=recipient_email, context=context, template_id=template_id)
+            await self.email_controller.send_email(
+                to_email=recipient_email,
+                context=context,
+                template_id=template_id,
+                metadata=self._email_metadata(booking_uid=booking_uid, trigger_event=trigger_event, role=role),
+            )
         except Exception:
             logger.exception(f"Error sending email to {role}")
 
@@ -299,6 +318,7 @@ class NotificationController(INotificationController):
             role="organizer",
             trigger_event=trigger_event,
             context=context,
+            booking_uid=booking.uid,
         )
 
     async def notify_organizer(
@@ -352,6 +372,7 @@ class NotificationController(INotificationController):
             role="client",
             trigger_event=trigger_event,
             context=context,
+            booking_uid=booking.uid,
             template_id=self._client_template_id(trigger_event=trigger_event, refund=refund),
         )
 
@@ -405,6 +426,11 @@ class NotificationController(INotificationController):
                 to_email=booking.client.email,
                 context=context,
                 template_id=template_id,
+                metadata=self._email_metadata(
+                    booking_uid=booking.uid,
+                    trigger_event=TriggerEvent.BOOKING_REJECTED,
+                    role="client",
+                ),
             )
         except Exception:
             logger.exception(
