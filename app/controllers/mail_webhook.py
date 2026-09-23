@@ -14,6 +14,10 @@ logger = structlog.get_logger(__name__)
 EMAIL_STATUS_EVENT = "transactional_email_status"
 EVENT_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+# Statuses worth waking an admin for. Every status is stored, but a delivered email
+# produces several events, and reporting each of them would bury the failures.
+ALERT_STATUSES = frozenset({"soft_bounced", "hard_bounced", "spam"})
+
 
 class MailWebhookController:
     def __init__(self, bot: Bot, settings: Settings, email_event_db: IEmailEventDatabaseAdapter) -> None:
@@ -33,7 +37,8 @@ class MailWebhookController:
                 if not await self.email_event_db.save_event(email_event):
                     continue
 
-                await self._notify_admins(email_event)
+                if email_event.status in ALERT_STATUSES:
+                    await self._notify_admins(email_event)
         return None
 
     @staticmethod
