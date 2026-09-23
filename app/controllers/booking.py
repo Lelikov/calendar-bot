@@ -153,7 +153,7 @@ class BookingController:
             participant_id=booking.client.email,
             participant_name=booking.client.name,
             is_update_url_data=is_update_url_data,
-            is_update_url_in_db=False,
+            is_update_url_in_db=True,
             external_id_prefix=self.client_meeting_prefix,
         )
         await self.notification_controller.notify_client(

@@ -18,6 +18,11 @@ logger = structlog.get_logger(__name__)
 METADATA_WAIT_ATTEMPTS = 1
 METADATA_WAIT_DELAY = 5
 
+# Keys of Booking.metadata the meeting links are stored under. videoCallUrl is Cal.com's
+# own key - it reads it back for its interface and emails; the client link is ours.
+ORGANIZER_URL_METADATA_KEY = "videoCallUrl"
+CLIENT_URL_METADATA_KEY = "clientVideoCallUrl"
+
 
 class MeetingController(IMeetingController):
     def __init__(
@@ -62,8 +67,17 @@ class MeetingController(IMeetingController):
         )
         if is_update_url_in_db:
             await self._ensure_metadata_sync(booking.uid)
-            await self.db.update_booking_video_url(booking.uid, meeting_url)
+            await self.db.update_booking_meeting_url(
+                booking_uid=booking.uid,
+                url=meeting_url,
+                metadata_key=self._url_metadata_key(external_id_prefix),
+            )
         return meeting_url
+
+    @staticmethod
+    def _url_metadata_key(external_id_prefix: str) -> str:
+        """Pick the key by the participant: a prefixed external id means the client, as in the jitsi token."""
+        return CLIENT_URL_METADATA_KEY if external_id_prefix else ORGANIZER_URL_METADATA_KEY
 
     async def get_meeting_url(self, booking: BookingDTO, external_id_prefix: str = "") -> str | None:
         return await self.shortener.get_url(external_id=f"{external_id_prefix}{booking.uid}")
@@ -135,8 +149,18 @@ class MeetingController(IMeetingController):
         return final_url
 
     async def _ensure_metadata_sync(self, uid: str) -> None:
+        """Wait until Cal.com has written its own metadata, so our merge is not overwritten.
+
+        Checked before sleeping: the client link is written right after the organizer's,
+        and by then the metadata is filled in for sure - there is nothing to wait for.
+        """
+        if await self._has_metadata(uid):
+            return
         for _ in range(METADATA_WAIT_ATTEMPTS):
             await sleep(METADATA_WAIT_DELAY)
-            booking = await self.db.get_booking(uid)
-            if booking and booking.metadata and str(booking.metadata) != "{}":
+            if await self._has_metadata(uid):
                 return
+
+    async def _has_metadata(self, uid: str) -> bool:
+        booking = await self.db.get_booking(uid)
+        return bool(booking and booking.metadata and str(booking.metadata) != "{}")

@@ -117,14 +117,14 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
             return self._fill_booking_dto(row)
         return None
 
-    async def update_booking_video_url(self, booking_uid: str, url: str) -> None:
+    async def update_booking_meeting_url(self, booking_uid: str, url: str, metadata_key: str) -> None:
         query = """
             UPDATE public."Booking"
             SET metadata = COALESCE(metadata, '{}'::jsonb) ||
-                           jsonb_build_object('videoCallUrl', CAST(:url AS text))
+                           jsonb_build_object(CAST(:metadata_key AS text), CAST(:url AS text))
             WHERE uid = :booking_uid
         """
-        await self.sql.execute(query, {"booking_uid": booking_uid, "url": url})
+        await self.sql.execute(query, {"booking_uid": booking_uid, "url": url, "metadata_key": metadata_key})
 
     async def get_bookings(
         self,
