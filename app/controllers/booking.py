@@ -322,7 +322,7 @@ class BookingController:
                 channel_id=booking.uid,
                 user_id=booking.user.email,
                 message={
-                    "text": f"Добрый день! Меня зовут {booking.user.name}. Сегодня я буду вашим психологом-волонтером.",
+                    "text": f"Добрый день! Меня зовут {booking.user.name}. Сегодня я буду вашим психологом.",
                 },
             )
             await self.chat_controller.send_message(
