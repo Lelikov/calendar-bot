@@ -38,6 +38,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.9.3",
 ]
 
@@ -98,3 +100,7 @@ no-lines-before = ["local-folder", "standard-library"]
 known-third-party = []
 known-local-folder = []
 lines-after-imports = 2
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

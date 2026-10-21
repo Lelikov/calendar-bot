@@ -66,6 +66,26 @@ class NotificationController(INotificationController):
         self.timeshift = 10 * 60
 
     @staticmethod
+    def build_rebook_url(*, booking: BookingDTO, settings: Settings) -> str:
+        """Pick the booking link for "book a new consultation" in client emails.
+
+        A commercial (full-price) booking lives on a personal child event type of a
+        Cal.com MANAGED event type - parentId is set and the slug matches the configured
+        full-price slug. Everything else (social tariff, missing event type data, no
+        organizer username) falls back to the shared social booking link so the button
+        is never left without a destination.
+        """
+        username = booking.user.username if booking.user else None
+        is_commercial = (
+            booking.event_type_parent_id is not None
+            and booking.event_type_slug == settings.full_price_event_slug
+            and username
+        )
+        if is_commercial:
+            return f"{settings.cal_public_url.rstrip('/')}/{username}/{booking.event_type_slug}"
+        return settings.social_booking_url
+
+    @staticmethod
     def get_time_zone_city(*, time_zone: str) -> str:
         return get_timezone_location(time_zone, locale="ru", return_city=True)
 
@@ -364,6 +384,7 @@ class NotificationController(INotificationController):
             additional_context={
                 "ClientName": booking.client.name,
                 "CancelLink": f"{self.settings.booking_host_url.replace('https://', '')}/booking/{booking.uid}",
+                "RebookUrl": self.build_rebook_url(booking=booking, settings=self.settings),
             },
         )
 
@@ -420,6 +441,7 @@ class NotificationController(INotificationController):
                 "RejectionReason": rejection_reason,
                 "AvailableFrom": available_from_text,
                 "PreviousMeetings": previous_meetings_html,
+                "RebookUrl": self.build_rebook_url(booking=booking, settings=self.settings),
             }
             template_id = self.EMAIL_TEMPLATES.get("client", {}).get(TriggerEvent.BOOKING_REJECTED)
             await self.email_controller.send_email(
