@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     chat_user_id_encryption_key: str
     offer_url: str
     is_enable_booking_constraints: bool = False
+    social_booking_url: str = "https://booking.zhivaya.org/team/zhivaya/volunteer-psychologist"
+    cal_public_url: str = "https://booking.zhivaya.org"
+    full_price_event_slug: str = "consultation"
 
     class Config:
         env_file = ".env"

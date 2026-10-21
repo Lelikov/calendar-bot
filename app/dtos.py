@@ -85,6 +85,7 @@ class UserDTO:
     time_zone: str
     telegram_chat_id: int | None = None
     telegram_token: str | None = None
+    username: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,6 +178,8 @@ class BookingDTO:
     reassign_by_id: int | None = None
     reassign_reason: str | None = None
     recurring_event_id: str | None = None
+    event_type_slug: str | None = None
+    event_type_parent_id: int | None = None
     rejection_reason: str | None = None
     rescheduled: bool | None = None
     rescheduled_by: str | None = None

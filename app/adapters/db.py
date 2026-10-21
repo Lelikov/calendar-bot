@@ -105,10 +105,12 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
                 b.*,
                 u.id as user_id_val, u.name as user_name, u.email as user_email, u.locked as user_locked,
                 u."timeZone" as user_time_zone, u.telegram_chat_id as user_telegram_chat_id,
-                u.telegram_token as user_telegram_token,
+                u.telegram_token as user_telegram_token, u.username as user_username,
+                et.slug as event_type_slug, et."parentId" as event_type_parent_id,
                 a.name as client_name, a.email as client_email, a."timeZone" as client_time_zone
             FROM public."Booking" b
             LEFT JOIN users u ON b."userId" = u.id
+            LEFT JOIN "EventType" et ON et.id = b."eventTypeId"
             LEFT JOIN "Attendee" a ON a."bookingId" = b.id
             WHERE b.uid = :booking_uid
         """
@@ -136,10 +138,12 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
                 b.*,
                 u.id as user_id_val, u.name as user_name, u.email as user_email, u.locked as user_locked,
                 u."timeZone" as user_time_zone, u.telegram_chat_id as user_telegram_chat_id,
-                u.telegram_token as user_telegram_token,
+                u.telegram_token as user_telegram_token, u.username as user_username,
+                et.slug as event_type_slug, et."parentId" as event_type_parent_id,
                 a.name as client_name, a.email as client_email, a."timeZone" as client_time_zone
             FROM public."Booking" b
             LEFT JOIN users u ON b."userId" = u.id
+            LEFT JOIN "EventType" et ON et.id = b."eventTypeId"
             LEFT JOIN "Attendee" a ON a."bookingId" = b.id
             WHERE b.status = 'accepted'
                 AND b."startTime" BETWEEN
@@ -166,6 +170,7 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
             time_zone=row["user_time_zone"],
             telegram_chat_id=row["user_telegram_chat_id"],
             telegram_token=row["user_telegram_token"],
+            username=row["user_username"],
         )
 
         client = BookingClientDTO(
@@ -214,6 +219,8 @@ class BookingDatabaseAdapter(IBookingDatabaseAdapter):
             one_time_password=row["oneTimePassword"],
             reassign_reason=row["reassignReason"],
             reassign_by_id=row["reassignById"],
+            event_type_slug=row["event_type_slug"],
+            event_type_parent_id=row["event_type_parent_id"],
             user=user,
             client=client,
         )
